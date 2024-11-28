@@ -1,4 +1,4 @@
-swgts-backend/input/
+input/
 swgts-backend/output/
 swgts-frontend/node_modules
 **/Dockerfile
