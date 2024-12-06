@@ -9,6 +9,9 @@ import GitInfo from 'react-git-info/macro';
 import logo from './logo.png'; // relative path to image
 import githubmark from './githubmark.png'; // relative path to image
 
+// Environment variables
+export const SWGTS_API_BASE_URL = process.env.REACT_APP_API_URL;
+
 // GIT
 const gitInfo = GitInfo();
 
@@ -26,9 +29,9 @@ const App = () => {
   const [progress, setProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
 
-  useEffect(() => {
+useEffect(() => {
     // Fetch backend version and display, verify compatibility
-    axios.get('/api/server-status')
+    axios.get(`${SWGTS_API_BASE_URL}/api/server-status`)
       .then((response) => {
         updateServerStatus(response);
         setBufferSize(response.data['maximum pending bytes']);
