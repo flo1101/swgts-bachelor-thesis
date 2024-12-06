@@ -64,27 +64,27 @@ services:
             interval: 5s
         restart: "unless-stopped"
 
-    swgts-frontend:
-      build:
-        context: ./
-        dockerfile: swgts-frontend/Dockerfile
-      ports:
-        - "80"
-      labels:
-          - traefik.enable=true
-          - traefik.http.routers.swgts-frontend_https.rule=PathPrefix(`/frontend`)
-          - traefik.http.routers.swgts-frontend_https.tls=true
-          - traefik.http.routers.swgts-frontend_https.entrypoints=https
-          - traefik.http.middlewares.strip_frontend.stripprefix.prefixes=/frontend
-          - traefik.http.routers.swgts-frontend_https.middlewares=strip_frontend@docker
-          - traefik.docker.network=swgts-deploy_traefik-frontend
-          - traefik.http.services.portugal.loadbalancer.server.port=80
-      networks:
-        - traefik-frontend
-      restart: unless-stopped
-      depends_on:
-          swgts-api:
-              condition: service_started
+#    swgts-frontend:
+#      build:
+#        context: ./
+#        dockerfile: swgts-frontend/Dockerfile
+#      ports:
+#        - "80"
+#      labels:
+#          - traefik.enable=true
+#          - traefik.http.routers.swgts-frontend_https.rule=PathPrefix(`/frontend`)
+#          - traefik.http.routers.swgts-frontend_https.tls=true
+#          - traefik.http.routers.swgts-frontend_https.entrypoints=https
+#          - traefik.http.middlewares.strip_frontend.stripprefix.prefixes=/frontend
+#          - traefik.http.routers.swgts-frontend_https.middlewares=strip_frontend@docker
+#          - traefik.docker.network=swgts-deploy_traefik-frontend
+#          - traefik.http.services.portugal.loadbalancer.server.port=80
+#      networks:
+#        - traefik-frontend
+#      restart: unless-stopped
+#      depends_on:
+#          swgts-api:
+#              condition: service_started
 
     traefik:
       image: traefik:v2.11
