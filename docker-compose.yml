@@ -105,12 +105,13 @@ services:
           target: /etc/ssl/private/server.pem
           read_only: true
       networks:
-        - traefik-frontend
+#        - traefik-frontend
         - traefik-api
         - outside-traefik
       depends_on:
-          swgts-frontend:
-              condition: service_started
+#        Run locally for developement
+#          swgts-frontend:
+#              condition: service_started
           swgts-api:
               condition: service_started
 volumes:
@@ -120,8 +121,8 @@ volumes:
 networks:
     outside-traefik:
         internal: false
-    traefik-frontend:
-        internal: true
+#    traefik-frontend:
+#        internal: true
     traefik-api:
         internal: true
     api-redis:
