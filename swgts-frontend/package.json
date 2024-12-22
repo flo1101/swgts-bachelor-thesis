@@ -11,15 +11,21 @@
     "@testing-library/react": "^14.0.0",
     "@testing-library/user-event": "^14.4.3",
     "axios": "^1.4.0",
+    "buffer": "^6.0.3",
     "file-saver": "^2.0.5",
+    "https-browserify": "^1.0.0",
     "pako": "^2.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-git-info": "^2.0.1",
     "react-scripts": "^5.0.1",
-    "web-vitals": "^3.4.0"
+    "stream-http": "^3.2.0",
+    "url": "^0.11.4",
+    "web-vitals": "^3.4.0",
+    "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "prettier": "3.4.2",
     "react-app-rewired": "^2.2.1",
     "webpack-react-component-name": "^5.0.5"
   },
