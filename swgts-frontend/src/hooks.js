@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import https from "https-browserify";
 import useStore from "./store";
+import { useShallow } from "zustand/react/shallow";
 
 /**
  * State is handled using Zustand.
@@ -22,10 +23,9 @@ const httpsAgent = new https.Agent({
  * Verifies backend accessibility and fetches server configuration
  */
 export const useGetServerConfig = () => {
-  const [serverConfig, setServerConfig] = useStore((state) => [
-    state.serverConfig,
-    state.setServerConfig,
-  ]);
+  const [serverConfig, setServerConfig] = useStore(
+    useShallow((state) => [state.serverConfig, state.setServerConfig]),
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
 
@@ -45,8 +45,8 @@ export const useGetServerConfig = () => {
     }
   };
 
-  useEffect(async () => {
-    await fetchServerConfig();
+  useEffect(() => {
+    fetchServerConfig();
   }, []);
 
   return {
