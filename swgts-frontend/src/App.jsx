@@ -1,12 +1,10 @@
 import "./App.css";
 import React, { useState } from "react";
 import LoadDataView from "./components/LoadDataView.jsx";
-import { uploadFASTQ } from "./data/FASTQProcessing.js";
 import ProgressMonitor from "./components/ProgressMonitor.jsx";
 import InfoDialog from "./components/InfoDialog.jsx";
-import logo from "./logo.png"; // relative path to image
-import githubmark from "./githubmark.png";
-import { useGetServerConfig } from "./hooks"; // relative path to image
+import { useGetServerConfig } from "./hooks";
+import { uploadFASTQ } from "./data/FASTQProcessing";
 
 const App = () => {
   const [filtered, setFiltered] = useState(0);
@@ -28,9 +26,7 @@ const App = () => {
     serverConfigError,
     fetchServerConfig,
   } = useGetServerConfig();
-
   const { bufferSize } = serverConfig;
-
   const dialogCallback = (newText) => {
     setShowDialog(true);
     setDialogText(newText);
@@ -62,13 +58,6 @@ const App = () => {
 
   return (
     <div className="App">
-      <br />
-      <img src={logo} width="128" />
-      <br />
-      <a href="https://github.com/AlBi-HHU/swgts">
-        <img src={githubmark} width="64" />
-      </a>
-      <br />
       {!uploading && (
         <LoadDataView
           className="ldv"
