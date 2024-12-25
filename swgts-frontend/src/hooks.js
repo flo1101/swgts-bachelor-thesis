@@ -45,8 +45,8 @@ export const useGetServerConfig = () => {
     }
   };
 
-  useEffect(() => {
-    fetchServerConfig();
+  useEffect(async () => {
+    await fetchServerConfig();
   }, []);
 
   return {
@@ -57,4 +57,4 @@ export const useGetServerConfig = () => {
   };
 };
 
-const useStartUpload = () => {};
+const useHandleFileUpload = () => {};
