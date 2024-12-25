@@ -1,18 +1,26 @@
-import React, { useState } from 'react';
-import { FormControlLabel, Switch, Button, Box } from '@mui/material';
+import React, { useState } from "react";
+import { Box, Button, FormControlLabel, Switch } from "@mui/material";
 
-const ALLOWED_EXTENSIONS = ['.fastq.gz', '.fq.gz', '.fastq', '.fq'];
+const ALLOWED_EXTENSIONS = [".fastq.gz", ".fq.gz", ".fastq", ".fq"];
 
-const LoadDataView = ({ dialogCallback, initiate_upload, disabled }) => {
+const LoadDataView = ({ dialogCallback, initiateUpload, disabled }) => {
   const [downloadFiles, setDownloadFiles] = useState(false);
   const [inputFiles, setInputFiles] = useState([]);
 
   const updateFileList = (files) => {
-    if ([...files].every(file => ALLOWED_EXTENSIONS.some(extension => file.name.endsWith(extension))) && files.length <= 2) {
+    if (
+      [...files].every((file) =>
+        ALLOWED_EXTENSIONS.some((extension) => file.name.endsWith(extension)),
+      ) &&
+      files.length <= 2
+    ) {
       setInputFiles([...files]);
       return true;
     } else {
-      dialogCallback('Only one or two files can be uploaded, allowed extensions are: ' + ALLOWED_EXTENSIONS.join(', '));
+      dialogCallback(
+        "Only one or two files can be uploaded, allowed extensions are: " +
+          ALLOWED_EXTENSIONS.join(", "),
+      );
       return false;
     }
   };
@@ -20,25 +28,25 @@ const LoadDataView = ({ dialogCallback, initiate_upload, disabled }) => {
   const dragEnter = (event) => {
     event.preventDefault();
     event.stopPropagation();
-    event.currentTarget.classList.add('highlight');
+    event.currentTarget.classList.add("highlight");
   };
 
   const dragOver = (event) => {
     event.preventDefault();
     event.stopPropagation();
-    event.currentTarget.classList.add('highlight');
+    event.currentTarget.classList.add("highlight");
   };
 
   const dragLeave = (event) => {
     event.preventDefault();
     event.stopPropagation();
-    event.currentTarget.classList.remove('highlight');
+    event.currentTarget.classList.remove("highlight");
   };
 
   const drop = (event) => {
     event.preventDefault();
     event.stopPropagation();
-    event.currentTarget.classList.remove('highlight');
+    event.currentTarget.classList.remove("highlight");
     if (event.dataTransfer.files !== null) {
       updateFileList(event.dataTransfer.files);
     }
@@ -46,13 +54,14 @@ const LoadDataView = ({ dialogCallback, initiate_upload, disabled }) => {
 
   const click = (event) => {
     if (updateFileList(event.target.files) === false) {
-      event.target.value = '';
+      event.target.value = "";
     }
   };
 
   return (
     <>
-      <div id="drop-area"
+      <div
+        id="drop-area"
         onDragEnter={dragEnter}
         onDragOver={dragOver}
         onDragLeave={dragLeave}
@@ -65,15 +74,22 @@ const LoadDataView = ({ dialogCallback, initiate_upload, disabled }) => {
             type="file"
             multiple
             onChange={click}
-            accept={ALLOWED_EXTENSIONS.join(',')}
+            accept={ALLOWED_EXTENSIONS.join(",")}
           />
-          <label className="upload-button" htmlFor="fileElem">Select files</label>
+          <label className="upload-button" htmlFor="fileElem">
+            Select files
+          </label>
         </form>
       </div>
 
-      {inputFiles.length !== 0 ? "Selected Files: " + inputFiles.map(x => x.name).join('\t') : null}
+      {inputFiles.length !== 0
+        ? "Selected Files: " + inputFiles.map((x) => x.name).join("\t")
+        : null}
 
-      <Box className="loadDataView" style={disabled ? { pointerEvents: "none", opacity: "0.4" } : {}}>
+      <Box
+        className="loadDataView"
+        style={disabled ? { pointerEvents: "none", opacity: "0.4" } : {}}
+      >
         <Button
           id={"upload_button"}
           variant="contained"
@@ -82,15 +98,18 @@ const LoadDataView = ({ dialogCallback, initiate_upload, disabled }) => {
               dialogCallback(`Please select a file for uploading!`);
               return;
             }
-            initiate_upload(Array.from(inputFiles), downloadFiles);
+            initiateUpload(Array.from(inputFiles), downloadFiles);
           }}
         >
           Upload File
         </Button>
 
-        <FormControlLabel control={
-          <Switch onChange={(e, checked) => setDownloadFiles(checked)} />
-        } label="Download filtered files" />
+        <FormControlLabel
+          control={
+            <Switch onChange={(e, checked) => setDownloadFiles(checked)} />
+          }
+          label="Download filtered files"
+        />
       </Box>
     </>
   );
