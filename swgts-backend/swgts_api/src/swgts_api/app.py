@@ -147,26 +147,44 @@ def post_context_reads(context_id: UUID) -> dict[str, Union[int, str]]:
                          200)
 
 
+# Load the default configuration from 'config.py'
 app.config.from_pyfile('config.py')
+
+# Check if an additional configuration file exists and load it if found
 if os.path.exists(app.config['CONFIG_FILE']):
     print('found additional config file, overwriting defaults ...')
     app.config.from_pyfile(app.config['CONFIG_FILE'])
-logging.basicConfig(filename=app.config['LOG_FILE'], level='INFO',
-                    format='%(asctime)s:%(levelname)s:%(name)s:%(message)s')
+
+# Set up logging configuration
+logging.basicConfig(
+    filename=app.config['LOG_FILE'],  # Log file path
+    level='INFO',  # Log level
+    format='%(asctime)s:%(levelname)s:%(name)s:%(message)s'  # Log message format
+)
+
+# Add a stream handler to also output logs to the console
 logging.getLogger().addHandler(logging.StreamHandler())
 
+# Log all configuration settings for debugging purposes
 for k in app.config:
     app.logger.info(f'Configuration {k} -> {app.config[k]}')
 
-
+# Log the attempt to connect to the stateful backend
 app.logger.info('Connecting to stateful backend.')
+
+# Initialize the state server (e.g., Redis) using the configuration
 setup_state_server(app.config)
+
+# Check the connection to the state server and exit if the connection fails
 if not redis_ping():
     app.logger.fatal('Could not connect to stateful backend. Goodbye.')
     sys.exit(1)
 
-#Share Context Timeout
+# Share the context timeout setting with the state server
 share_timeout(app.config['CONTEXT_TIMEOUT'])
 
+# Record the server launch time
 SERVER_LAUNCH_TIME = time()
+
+# Log that the server has started
 app.logger.info('Server launched.')
