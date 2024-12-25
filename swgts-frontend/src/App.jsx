@@ -1,28 +1,12 @@
 import "./App.css";
-import https from "https-browserify";
 import React, { useState } from "react";
 import LoadDataView from "./components/LoadDataView.jsx";
 import { uploadFASTQ } from "./data/FASTQProcessing.js";
 import ProgressMonitor from "./components/ProgressMonitor.jsx";
 import InfoDialog from "./components/InfoDialog.jsx";
-import GitInfo from "react-git-info/macro";
 import logo from "./logo.png"; // relative path to image
 import githubmark from "./githubmark.png";
 import { useGetServerConfig } from "./hooks"; // relative path to image
-
-// Environment variables
-export const SWGTS_API_BASE_URL = process.env.REACT_APP_API_URL;
-export const SSL_CRT_FILE = process.env.SSL_CRT_FILE;
-export const SSL_KEY_FILE = process.env.SSL_KEY_FILE;
-
-// Disable SSL verification for locally running frontend
-const httpsAgent = new https.Agent({
-  cert: SSL_KEY_FILE,
-  key: SSL_CRT_FILE,
-});
-
-// GIT
-const gitInfo = GitInfo();
 
 const App = () => {
   const [filtered, setFiltered] = useState(0);
@@ -89,7 +73,7 @@ const App = () => {
         <LoadDataView
           className="ldv"
           dialogCallback={dialogCallback}
-          initiate_upload={initiateUpload}
+          initiateUpload={initiateUpload}
         />
       )}
       {showDialog && (
