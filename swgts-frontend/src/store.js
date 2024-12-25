@@ -1,5 +1,9 @@
 import { create } from "zustand";
 
-const store = (set) => ({});
+const useStore = create((set) => ({
+  // Server configuration (buffer size, uptime, version...)
+  serverConfig: {},
+  setServerConfig: (serverConfig) => set({ serverConfig }),
+}));
 
-export const useStore = create(store);
+export default useStore;
