@@ -1,0 +1,34 @@
+span {
+    margin-left: 20px;
+}
+
+input[type="checkbox"]:before {
+    position: relative;
+    display: block;
+    width: 23px;
+    height: 23px;
+    content: "";
+    top: -5px;
+    background-color: var(--mid-grey);
+    border-radius: 3px;
+}
+
+input[type="checkbox"]:after {
+    position: relative;
+    display: block;
+    top: -28px;
+    width: 23px;
+    height: 23px;
+    content: "";
+    background-repeat: no-repeat;
+    background-position: center;
+    border-radius: 3px;
+}
+
+input[type="checkbox"]:checked:after {
+    background-image: url("../../assets/icons/check.svg");
+}
+
+input[type="checkbox"]:disabled:after {
+    -webkit-filter: opacity(0.4);
+}
