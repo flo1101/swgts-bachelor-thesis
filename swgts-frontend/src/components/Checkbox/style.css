@@ -2,6 +2,10 @@
     margin-left: 20px;
 }
 
+input[type="checkbox"] {
+    cursor: pointer;
+}
+
 input[type="checkbox"]:before {
     position: relative;
     display: block;
@@ -11,6 +15,7 @@ input[type="checkbox"]:before {
     top: -5px;
     background-color: var(--mid-grey);
     border-radius: 3px;
+
 }
 
 input[type="checkbox"]:after {

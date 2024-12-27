@@ -17,6 +17,7 @@ const UploadView = ({ dialogCallback, initiateUpload }) => {
 
   return (
     <div className="upload-view">
+      <h1>Upload to server</h1>
       <DropArea dialogCallback={dialogCallback} setFiles={setFiles}>
         <UploadInfo />
         <SelectedFiles files={files} deleteFile={deleteFile} />
