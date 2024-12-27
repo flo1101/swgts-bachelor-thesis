@@ -1,6 +1,6 @@
 import "./App.css";
 import React, { useState } from "react";
-import LoadDataView from "./components/LoadDataView.jsx";
+import UploadView from "./components/UploadView/UploadView.jsx";
 import ProgressMonitor from "./components/ProgressMonitor.jsx";
 import InfoDialog from "./components/InfoDialog.jsx";
 import { useGetServerConfig } from "./hooks";
@@ -58,25 +58,23 @@ const App = () => {
 
   return (
     <div className="App">
-      {!uploading && (
-        <LoadDataView
-          className="ldv"
+      {uploading ? (
+        <ProgressMonitor
+          dialogCallback={dialogCallback}
+          bufferSize={bufferSize}
+          total={total}
+          progress={progress}
+          filtered={filtered}
+          bufferFill={bufferFill}
+        />
+      ) : (
+        <UploadView
           dialogCallback={dialogCallback}
           initiateUpload={initiateUpload}
         />
       )}
       {showDialog && (
         <InfoDialog text={dialogText} closeInfoDialog={closeDialog} />
-      )}
-      {uploading && (
-        <ProgressMonitor
-          dialogCallback={dialogCallback}
-          buffer_size={bufferSize}
-          total={total}
-          progress={progress}
-          filtered={filtered}
-          buffer_fill={bufferFill}
-        />
       )}
     </div>
   );
