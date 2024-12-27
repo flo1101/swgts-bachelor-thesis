@@ -8,7 +8,7 @@ import UploadInfo from "./components/UploadInfo";
 
 export const ALLOWED_EXTENSIONS = [".fastq.gz", ".fq.gz", ".fastq", ".fq"];
 
-const UploadView = ({ dialogCallback, initiateUpload }) => {
+const UploadView = ({ initiateUpload }) => {
   const [files, setFiles] = useState([]);
   const [downloadFiles, setDownloadFiles] = useState(false);
   const disableUpload = files.length <= 0;
