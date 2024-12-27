@@ -25,7 +25,6 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-//TODO: DOC
 async function workerThread(
   lines_per_readfile,
   context,
@@ -128,26 +127,25 @@ async function fastqFileToLines(f) {
   }
 }
 
-const validateFastqFiles = async (files) => {
-  if (files.length > 2) return false;
-};
-
+/**
+ * TODO: move state from parameters into zustand store
+ */
 async function uploadFASTQ(
   files,
   download_files,
+  buffer_size,
+  // Params whose state to move:
   updateProgressCallback,
   updateTotalCallback,
   updateBufferFillCallback,
   updateFilteredCallback,
   dialogCallback,
-  buffer_size,
 ) {
   console.log("Uploading files: ", files);
   try {
     const fqsAsText = await Promise.all(files.map((f) => fastqFileToLines(f)));
     //Read the file and perform basic sanity checks
     const lineCounts = fqsAsText.map((f) => f.length);
-    //console.log(lineCounts)
     //Use the first file as placeholder and check for valid linecount
     if (lineCounts[0] % 4 !== 0) {
       dialogCallback(
