@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import https from "https-browserify";
-import useStore from "./store";
+import useStore from "../store";
 import { useShallow } from "zustand/react/shallow";
 
 /**
@@ -56,5 +56,3 @@ export const useGetServerConfig = () => {
     fetchServerConfig,
   };
 };
-
-const useHandleFileUpload = () => {};
