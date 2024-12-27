@@ -19,7 +19,7 @@ h1 {
     align-items: center;
     justify-content: center;
     height: 100%;
-    gap: 20px;
+    gap: 60px;
     color: var(--mid-grey);
     transition: .1s;
     flex: 1;
@@ -65,4 +65,42 @@ h1 {
 
 .allowed-extensions h2 {
     display: inline;
+}
+
+.selected-files {
+    height: 100px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    align-items: center;
+}
+
+.selected-file {
+    padding: 10px 15px;
+    background-color: var(--mid-grey);
+    border-radius: var(--border-radius);
+    color: white;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    width: max-content;
+}
+
+.selected-file > span {
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+
+.upload-button-checkbox {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+}
+
+.upload-button-checkbox > .start-upload-button {
+    width: 250px;
 }

@@ -1,26 +1,6 @@
 import React from "react";
 
-export const ALLOWED_EXTENSIONS = [".fastq.gz", ".fq.gz", ".fastq", ".fq"];
-
-const DropArea = ({ dialogCallback, setFiles, children }) => {
-  const validateAndUpdateFiles = (files) => {
-    if (
-      [...files].every((file) =>
-        ALLOWED_EXTENSIONS.some((extension) => file.name.endsWith(extension)),
-      ) &&
-      files.length <= 2
-    ) {
-      setFiles([...files]);
-      return true;
-    } else {
-      dialogCallback(
-        "You can upload up to 2 files. Allowed extensions are: " +
-          ALLOWED_EXTENSIONS.join(", "),
-      );
-      return false;
-    }
-  };
-
+const DropArea = ({ children, addFiles }) => {
   const dragEnter = (event) => {
     event.preventDefault();
     event.stopPropagation();
@@ -44,7 +24,7 @@ const DropArea = ({ dialogCallback, setFiles, children }) => {
     event.stopPropagation();
     event.currentTarget.classList.remove("highlight");
     if (event.dataTransfer.files !== null) {
-      validateAndUpdateFiles(event.dataTransfer.files);
+      addFiles(event.dataTransfer.files);
     }
   };
 

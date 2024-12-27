@@ -31,7 +31,7 @@ input[type="checkbox"]:after {
 }
 
 input[type="checkbox"]:checked:after {
-    background-image: url("../../assets/icons/check.svg");
+    background-image: url("../../assets/svg/check.svg");
 }
 
 input[type="checkbox"]:disabled:after {

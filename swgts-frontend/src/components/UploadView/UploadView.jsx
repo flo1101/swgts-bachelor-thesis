@@ -6,34 +6,61 @@ import Checkbox from "../Checkbox/Checkbox";
 import SelectedFiles from "./components/SelectedFiles";
 import UploadInfo from "./components/UploadInfo";
 
+export const ALLOWED_EXTENSIONS = [".fastq.gz", ".fq.gz", ".fastq", ".fq"];
+
 const UploadView = ({ dialogCallback, initiateUpload }) => {
-  const [files, setFiles] = useState([1, 2]);
+  const [files, setFiles] = useState([]);
   const [downloadFiles, setDownloadFiles] = useState(false);
   const disableUpload = files.length <= 0;
 
   const startUpload = () => initiateUpload(files, downloadFiles);
 
-  const deleteFile = (name) => {};
+  const addFiles = (files) => {
+    if (
+      [...files].every((file) =>
+        ALLOWED_EXTENSIONS.some((extension) => file.name.endsWith(extension)),
+      ) &&
+      files.length + files.length <= 2
+    ) {
+      setFiles((prev) => [...prev, ...files]);
+      return true;
+    } else {
+      return false;
+    }
+  };
+
+  const deleteFile = (name) => {
+    if (files.length === 0) return;
+    const fileIndex = files.findIndex((file) => file?.name === name);
+    if (fileIndex === -1) return;
+    setFiles((files) => {
+      const newFiles = [...files];
+      newFiles.splice(fileIndex, 1);
+      return newFiles;
+    });
+  };
 
   return (
     <div className="upload-view">
       <h1>Upload to server</h1>
-      <DropArea dialogCallback={dialogCallback} setFiles={setFiles}>
-        <UploadInfo />
+      <DropArea addFiles={addFiles}>
+        <UploadInfo addFiles={addFiles} />
         <SelectedFiles files={files} deleteFile={deleteFile} />
-        <Button
-          className={"start-upload-button"}
-          disabled={disableUpload}
-          label={"Start upload"}
-          onClick={startUpload}
-        />
-        <Checkbox
-          className={"download-files-checkbox"}
-          val={downloadFiles}
-          set={setDownloadFiles}
-          disabled={disableUpload}
-          label={"Download filtered files"}
-        />
+        <div className="upload-button-checkbox">
+          <Button
+            className={"start-upload-button"}
+            disabled={disableUpload}
+            label={"Start upload"}
+            disabledLabel={"No files selected"}
+            onClick={startUpload}
+          />
+          <Checkbox
+            className={"download-files-checkbox"}
+            val={downloadFiles}
+            set={setDownloadFiles}
+            label={"Download filtered files"}
+          />
+        </div>
       </DropArea>
     </div>
   );
