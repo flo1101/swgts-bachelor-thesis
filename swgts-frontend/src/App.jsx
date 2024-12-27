@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import UploadView from "./components/UploadView/UploadView.jsx";
 import ProgressMonitor from "./components/ProgressMonitor.jsx";
 import InfoDialog from "./components/InfoDialog.jsx";
-import { useGetServerConfig } from "./hooks";
+import { useGetServerConfig } from "./hooks/serverConfigHooks";
 import { uploadFASTQ } from "./data/FASTQProcessing";
 
 const App = () => {
@@ -27,7 +27,7 @@ const App = () => {
     fetchServerConfig,
   } = useGetServerConfig();
   const { bufferSize } = serverConfig;
-  const dialogCallback = (newText) => {
+  const displayDialog = (newText) => {
     setShowDialog(true);
     setDialogText(newText);
   };
@@ -40,18 +40,18 @@ const App = () => {
     setShowDialog(false);
   };
 
-  const initiateUpload = (fileList, download) => {
+  const initiateUpload = (files, downloadFiles) => {
     setUploading(true);
     setFiltered(0);
     setProgress(0);
     uploadFASTQ(
-      fileList,
-      download,
+      files,
+      downloadFiles,
       updateProgress,
       setTotal,
       setBufferFill,
       setFiltered,
-      dialogCallback,
+      displayDialog,
       bufferSize,
     ).then(() => setUploading(false));
   };
@@ -60,7 +60,7 @@ const App = () => {
     <div className="App">
       {uploading ? (
         <ProgressMonitor
-          dialogCallback={dialogCallback}
+          dialogCallback={displayDialog}
           bufferSize={bufferSize}
           total={total}
           progress={progress}
@@ -69,7 +69,7 @@ const App = () => {
         />
       ) : (
         <UploadView
-          dialogCallback={dialogCallback}
+          dialogCallback={displayDialog}
           initiateUpload={initiateUpload}
         />
       )}
