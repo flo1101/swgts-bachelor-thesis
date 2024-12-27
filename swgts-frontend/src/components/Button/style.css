@@ -9,3 +9,8 @@
     width: max-content;
     color: black;
 }
+
+.disabled {
+    opacity: .3;
+    cursor: auto;
+}

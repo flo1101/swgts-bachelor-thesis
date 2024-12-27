@@ -2,6 +2,7 @@ import "./style.css";
 
 const Button = ({
   label = "",
+  disabledLabel,
   disabled = false,
   onClick = () => {},
   icon,
@@ -10,10 +11,10 @@ const Button = ({
   return (
     <button
       disabled={disabled}
-      className={className ? `btn ${className}` : "btn"}
+      className={`btn ${className} ${disabled ? "disabled" : ""}`}
       onClick={onClick}
     >
-      {label}
+      {disabledLabel && disabled ? disabledLabel : label}
       {icon}
     </button>
   );
