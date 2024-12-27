@@ -5,16 +5,17 @@ const Checkbox = ({
   disabled = false,
   val = false,
   set = (ignore) => {},
+  className,
 }) => {
   return (
-    <div className={"checkbox"}>
+    <div className={className ? `${className} checkbox` : "checkbox"}>
       <input
         type="checkbox"
         checked={val}
         onChange={() => set((prev) => !prev)}
         disabled={disabled}
       />
-      {label && <span>{label}</span>}
+      {label && <span className="label">{label}</span>}
     </div>
   );
 };

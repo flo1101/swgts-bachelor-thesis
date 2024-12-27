@@ -21,11 +21,13 @@ const UploadView = ({ dialogCallback, initiateUpload }) => {
         <UploadInfo />
         <SelectedFiles files={files} deleteFile={deleteFile} />
         <Button
+          className={"start-upload-button"}
           disabled={disableUpload}
           label={"Start upload"}
           onClick={startUpload}
         />
         <Checkbox
+          className={"download-files-checkbox"}
           val={downloadFiles}
           set={setDownloadFiles}
           disabled={disableUpload}
