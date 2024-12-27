@@ -1,6 +1,6 @@
 import React from "react";
 
-const ALLOWED_EXTENSIONS = [".fastq.gz", ".fq.gz", ".fastq", ".fq"];
+export const ALLOWED_EXTENSIONS = [".fastq.gz", ".fq.gz", ".fastq", ".fq"];
 
 const DropArea = ({ dialogCallback, setFiles, children }) => {
   const validateAndUpdateFiles = (files) => {

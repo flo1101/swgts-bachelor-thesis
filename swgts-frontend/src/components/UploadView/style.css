@@ -52,3 +52,17 @@ h1 {
     opacity: 0;
     position: absolute;
 }
+
+.allowed-extensions {
+    margin-top: 20px;
+}
+
+.extensions {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+}
+
+.allowed-extensions h2 {
+    display: inline;
+}
