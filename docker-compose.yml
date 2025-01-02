@@ -20,7 +20,7 @@ services:
             - api-redis
         labels:
             - traefik.enable=true
-            - traefik.http.routers.swgts-api_https.rule=PathPrefix(`/api/`)
+            - traefik.http.routers.swgts-api_https.rule=PathPrefix(`/api`)
             - traefik.http.routers.swgts-api_https.tls=true
             - traefik.http.routers.swgts-api_https.entrypoints=https
             - traefik.docker.network=swgts-deploy_traefik-api
@@ -64,27 +64,27 @@ services:
             interval: 5s
         restart: "unless-stopped"
 
-#    swgts-frontend:
-#      build:
-#        context: ./
-#        dockerfile: swgts-frontend/Dockerfile
-#      ports:
-#        - "80"
-#      labels:
-#          - traefik.enable=true
-#          - traefik.http.routers.swgts-frontend_https.rule=PathPrefix(`/frontend`)
-#          - traefik.http.routers.swgts-frontend_https.tls=true
-#          - traefik.http.routers.swgts-frontend_https.entrypoints=https
-#          - traefik.http.middlewares.strip_frontend.stripprefix.prefixes=/frontend
-#          - traefik.http.routers.swgts-frontend_https.middlewares=strip_frontend@docker
-#          - traefik.docker.network=swgts-deploy_traefik-frontend
-#          - traefik.http.services.portugal.loadbalancer.server.port=80
-#      networks:
-#        - traefik-frontend
-#      restart: unless-stopped
-#      depends_on:
-#          swgts-api:
-#              condition: service_started
+    swgts-frontend:
+      build:
+        context: ./
+        dockerfile: swgts-frontend/Dockerfile
+      ports:
+        - "80"
+      labels:
+          - traefik.enable=true
+          - traefik.http.routers.swgts-frontend_https.rule=PathPrefix(`/`)
+          - traefik.http.routers.swgts-frontend_https.tls=true
+          - traefik.http.routers.swgts-frontend_https.entrypoints=https
+          - traefik.http.middlewares.strip_frontend.stripprefix.prefixes=/frontend
+          - traefik.http.routers.swgts-frontend_https.middlewares=strip_frontend@docker
+          - traefik.docker.network=swgts-deploy_traefik-frontend
+          - traefik.http.services.portugal.loadbalancer.server.port=80
+      networks:
+        - traefik-frontend
+      restart: unless-stopped
+      depends_on:
+          swgts-api:
+              condition: service_started
 
     traefik:
       image: traefik:v2.11
@@ -105,13 +105,12 @@ services:
           target: /etc/ssl/private/server.pem
           read_only: true
       networks:
-#        - traefik-frontend
+        - traefik-frontend
         - traefik-api
         - outside-traefik
       depends_on:
-#        Run locally for developement
-#          swgts-frontend:
-#              condition: service_started
+          swgts-frontend:
+              condition: service_started
           swgts-api:
               condition: service_started
 volumes:
@@ -121,8 +120,8 @@ volumes:
 networks:
     outside-traefik:
         internal: false
-#    traefik-frontend:
-#        internal: true
+    traefik-frontend:
+        internal: true
     traefik-api:
         internal: true
     api-redis:
