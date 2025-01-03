@@ -7,12 +7,12 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import DialogTitle from '@mui/material/DialogTitle';
 
-const InfoDialog = ({text, closeInfoDialog}) => {
+const InfoDialog = ({text = "", close = () => {}}) => {
      //TODO: Localization applied to strings
     return (
       <Dialog
         open={true}
-        onClose={closeInfoDialog}
+        onClose={close}
         aria-labelledby="alert-dialog-title"
         aria-describedby="alert-dialog-description"
       >
@@ -23,7 +23,7 @@ const InfoDialog = ({text, closeInfoDialog}) => {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={closeInfoDialog} color="primary">
+          <Button onClick={close} color="primary">
             OK
           </Button>
         </DialogActions>
