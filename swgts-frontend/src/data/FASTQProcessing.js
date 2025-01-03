@@ -132,14 +132,14 @@ async function fastqFileToLines(f) {
  */
 async function uploadFASTQ(
   files,
-  download_files,
-  buffer_size,
+  downloadFiles,
+  bufferSize,
   // Params whose state to move:
-  updateProgressCallback,
-  updateTotalCallback,
-  updateBufferFillCallback,
-  updateFilteredCallback,
-  dialogCallback,
+  updateProgress,
+  setTotal,
+  setBufferFill,
+  setFiltered,
+  displayDialog,
 ) {
   console.log("Uploading files: ", files);
   try {
@@ -148,14 +148,14 @@ async function uploadFASTQ(
     const lineCounts = fqsAsText.map((f) => f.length);
     //Use the first file as placeholder and check for valid linecount
     if (lineCounts[0] % 4 !== 0) {
-      dialogCallback(
+      displayDialog(
         `Found a number of lines not divisible by 4 (${lineCounts[0].length}), likely a corrupted file!`,
       );
       return;
     }
     //For paired read files: Check match between read counts
     if (!lineCounts.every((f) => f === lineCounts[0])) {
-      dialogCallback(
+      displayDialog(
         `The files have a different linecount (${lineCounts}) and can therefore not be paired!`,
       );
       return;
@@ -168,7 +168,7 @@ async function uploadFASTQ(
     const context = a.data.context;
 
     //Calculate Read Count
-    updateTotalCallback(readCounts[0]);
+    setTotal(readCounts[0]);
     console.log("Found a total of " + readCounts[0] + " reads");
 
     //For edge cases: Limit workers if less reads are in the file
@@ -200,10 +200,10 @@ async function uploadFASTQ(
         workerThread(
           linesForWorker,
           context,
-          updateProgressCallback,
-          updateBufferFillCallback,
-          updateFilteredCallback,
-          buffer_size,
+          updateProgress,
+          setBufferFill,
+          setFiltered,
+          bufferSize,
         ),
       );
     }
@@ -221,7 +221,7 @@ async function uploadFASTQ(
         });
         //Handling of Responses
         if (response.status === 200) {
-          dialogCallback(
+          displayDialog(
             response.data.saved.length +
               "/" +
               response.data.total +
@@ -233,7 +233,7 @@ async function uploadFASTQ(
         }
 
         //Reconstruct the files if downloading is selected
-        if (download_files) {
+        if (downloadFiles) {
           //Reconstruct fastqs
           for (let file_index = 0; file_index < files.length; file_index += 1) {
             let lines = fqsAsText[file_index];
@@ -263,8 +263,8 @@ async function uploadFASTQ(
       } catch (error) {
         if (error.response.status === 503) {
           console.log(error.response.data);
-          updateBufferFillCallback(error.response.data["pending bytes"]);
-          updateFilteredCallback(error.response.data["processed reads"]);
+          setBufferFill(error.response.data["pending bytes"]);
+          setFiltered(error.response.data["processed reads"]);
           console.log(
             'got an "orderly" 422 response asking me to slow down ...',
           );
@@ -280,7 +280,7 @@ async function uploadFASTQ(
   } catch (e) {
     //TODO: Differentiate and send a more informative response based on the nature of the issue
     console.log(e);
-    dialogCallback(e.toString());
+    displayDialog(e.toString());
   }
 }
 
