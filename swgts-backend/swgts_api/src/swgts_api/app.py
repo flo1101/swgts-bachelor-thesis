@@ -16,7 +16,7 @@ def server_status() -> dict[str, Union[str, float]]:
     dependencies. """
     answer: dict[str, Union[str, float]] = VERSION_INFORMATION.copy()
     answer['uptime'] = time() - SERVER_LAUNCH_TIME
-    answer['maximum pending bytes'] = app.config['MAXIMUM_PENDING_BYTES']
+    answer['bufferSize'] = app.config['MAXIMUM_PENDING_BYTES']
     return make_response(answer, 200)
 
 
@@ -66,19 +66,21 @@ def post_context_reads(context_id: UUID) -> dict[str, Union[int, str]]:
 
     request_reception_time = time()
 
+    # Check if the context exists
     if not context_exists(context_id):
-        return make_response({'message': 'No such context.'}, 404)
+        return make_response({'message': f'No context with id {context_id} found.'}, 404)
 
-    chunk: list[list[list[str]]]
+    # Try to get the JSON body from the request
     try:
-        chunk = request.get_json()
+        chunk: list[list[list[str]]] = request.get_json()
     except TypeError:
         return make_response({'message': 'Expected json body.'}, 400)
     except OSError:
         return make_response({'message': 'The connection was interrupted.'}, 400)
 
+    # Validate chunk format
     if not isinstance(chunk, list):
-        return make_response({'message': '"chunks" is not a list.'}, 400)
+        return make_response({'message': 'Passed read chunks are not in list format.'}, 400)
 
     effective_cumulated_chunk_size: int = 0
     pair_count: int = get_pair_count(context_id)  # We expect as much reads to be paired as we have open file streams. (Support for strobe reads in theory)
@@ -87,9 +89,10 @@ def post_context_reads(context_id: UUID) -> dict[str, Union[int, str]]:
     for pair in chunk:
         if not isinstance(pair, list):
             return make_response({'message': 'There is a pair which is not a list.'}, 400)
+
         if len(pair) != pair_count:
-            return make_response({'message': f'I thought you wanted to submit {pair_count}-paired reads, '
-                                             f'but here I got a pair that had {len(pair)} reads.'}, 400)
+            return make_response({'message': f'Expected {pair_count}-paired reads but found pair with {len(pair)} reads.'}, 400)
+
         filtered_pair = []
         for read in pair:
             if not isinstance(read, list):
@@ -98,17 +101,19 @@ def post_context_reads(context_id: UUID) -> dict[str, Union[int, str]]:
                 return make_response({'message': 'There is a read with a length != 4.'}, 400)
             # Here would be the place to perform additional sanity checks
 
+            # Check if the read length is within the allowed buffer size
             if len(read[1]) <= app.config['MAXIMUM_PENDING_BYTES']:
                 # Only count the length of the actual sequence
                 effective_cumulated_chunk_size += len(read[1])
                 filtered_pair.append(read)
             else:
                 increment_processed_bases(len(read[1]))
-                #The read will be discarded anyways and doesn't matter for buffer calculation
+                # The read will be discarded anyways and doesn't matter for buffer calculation
                 break
         else:
-            #All reads fit the size and can be enqueued for filtering
+            # All reads fit the size and can be enqueued for filtering
             pairs_short_enough.append(filtered_pair)
+
     current_pending : int  = get_pending_bytes_count(context_id)
     excess : int  = current_pending + effective_cumulated_chunk_size - app.config['MAXIMUM_PENDING_BYTES']
 
@@ -117,8 +122,8 @@ def post_context_reads(context_id: UUID) -> dict[str, Union[int, str]]:
             {'message': f'You sent a chunk that is larger than the configured buffer size',
              'processed reads': get_processed_read_count(context_id)
              }, 413)
-        #Fetch current average processing
-        resp.headers['Retry-After'] = excess*get_queue_speed(context_id)
+        # Fetch current average processing
+        resp.headers['Retry-After'] = excess * get_queue_speed(context_id)
         return resp
 
     elif excess > 0:
@@ -127,17 +132,17 @@ def post_context_reads(context_id: UUID) -> dict[str, Union[int, str]]:
              'pending bytes': current_pending,
              'processed reads': get_processed_read_count(context_id)
              }, 422)
-        #Fetch current average processing
-        resp.headers['Retry-After'] = excess*get_queue_speed(context_id)
+        # Fetch current average processing
+        resp.headers['Retry-After'] = excess * get_queue_speed(context_id)
         return resp
 
-    #Execution from here on means accepting the chunk and processing the reads
-    #Adjust pending bytes stat in redis
+    # Execution from here on means accepting the chunk and processing the reads
+    # Adjust pending bytes stat in redis
     current_pending = change_pending_bytes_count(context_id, effective_cumulated_chunk_size)
 
     increase_processed_read_count(context_id, len(chunk)-len(pairs_short_enough))
 
-    #Queue job and reads that are too long
+    # Enqueue valid read pairs for processing
     if len(pairs_short_enough) > 0:
         enqueue_chunks(pairs_short_enough, context_id, effective_cumulated_chunk_size, request_reception_time)
 
