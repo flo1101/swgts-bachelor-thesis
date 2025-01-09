@@ -1,9 +1,9 @@
 import React from 'react';
 import { LinearProgress } from '@mui/material';
 
-const ProgressMonitor = ({filtered, progress, bufferFill, total, bufferSize}) => {
-  const filteredPercentage = (filtered / Math.max(total, 1)) * 100;
-  const progressPercentage = (progress / Math.max(total, 1)) * 100;
+const ProgressMonitor = ({readsFiltered, readsProgressed, readsTotal, bufferFill, bufferSize}) => {
+  const filteredPercentage = (readsFiltered / Math.max(readsTotal, 1)) * 100;
+  const progressedPercentage = (readsProgressed / Math.max(readsTotal, 1)) * 100;
   const bufferFillPercentage = (bufferFill / Math.max(bufferSize, 1)) * 100;
 
   return (
@@ -12,9 +12,9 @@ const ProgressMonitor = ({filtered, progress, bufferFill, total, bufferSize}) =>
         variant="buffer"
         value={filteredPercentage}
         sx={{ height: "10px" }}
-        valueBuffer={progressPercentage}
+        valueBuffer={progressedPercentage}
     />
-      {progress}/{total} transferred ({filtered} filtered)
+      {readsProgressed}/{readsTotal} transferred ({readsFiltered} filtered)
       <LinearProgress
         variant="determinate"
         value={bufferFillPercentage}

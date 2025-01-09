@@ -15,7 +15,7 @@ const UploadView = ({ bufferSize }) => {
   const [downloadFiles, setDownloadFiles] = useState(false);
   const disableUpload = files.length <= 0;
 
-  const { startUpload, uploading, readCount, progress, filtered, bufferFill } = useHandleUpload(files, downloadFiles, bufferSize);
+  const { startUpload, uploading, readsTotal, readsProgressed, readsFiltered, bufferFill } = useHandleUpload(files, downloadFiles, bufferSize);
 
   const addFiles = (files) => {
     if (
@@ -47,9 +47,9 @@ const UploadView = ({ bufferSize }) => {
       {uploading ? (
         <ProgressMonitor
           bufferSize={bufferSize}
-          total={readCount}
-          progress={progress}
-          filtered={filtered}
+          readsTotal={readsTotal}
+          readsProgressed={readsProgressed}
+          readsFiltered={readsFiltered}
           bufferFill={bufferFill}
         />
       ) : (<><h1>Upload to server</h1>

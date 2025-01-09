@@ -181,41 +181,30 @@ export const useHandleUpload = (files, downloadFiles = false, bufferSize) => {
   const {
     uploading,
     setUploading,
-    readCount,
-    setReadCount,
-    progress,
-    setProgress,
-    filtered,
-    setFiltered,
+    readsTotal,
+    setReadsTotal,
+    readsProgressed,
+    setReadsProgress,
+    readsFiltered,
+    setReadsFiltered,
     bufferFill,
     setBufferFill,
-  } = useStore((state) => ({
-    uploading: state.uploading,
-    setUploading: state.setUploading,
-    readCount: state.readCount,
-    setReadCount: state.setReadCount,
-    progress: state.progress,
-    setProgress: state.setProgress,
-    filtered: state.filtered,
-    setFiltered: state.setFiltered,
-    bufferFill: state.bufferFill,
-    setBufferFill: state.setBufferFill,
-  }));
+  } = useStore();
 
   const {displayDialog} = useHandleDialog();
 
   const startUpload = async () => {
     try {
       setUploading(true)
-      setFiltered(0);
-      setProgress(0);
+      setReadsFiltered(0);
+      setReadsProgress(0);
 
       // Read files
       const { fqsAsText, lineCount, readCount } = readAndValidateFiles(
         files,
         displayDialog,
       );
-      setReadCount(readCount);
+      setReadsTotal(readCount);
 
       // Create context
       const contextId = await createContext(files);
@@ -225,9 +214,9 @@ export const useHandleUpload = (files, downloadFiles = false, bufferSize) => {
         fqsAsText,
         lineCount,
         contextId,
-        setProgress,
+        setReadsProgress,
         setBufferFill,
-        setFiltered,
+        setReadsFiltered,
         bufferSize,
       );
 
@@ -242,5 +231,5 @@ export const useHandleUpload = (files, downloadFiles = false, bufferSize) => {
     }
   };
 
-  return { startUpload, uploading, readCount, progress, filtered, bufferFill };
+  return { startUpload, uploading, readsTotal: readsTotal, readsProgressed: readsProgressed, readsFiltered: readsFiltered, bufferFill };
 };
