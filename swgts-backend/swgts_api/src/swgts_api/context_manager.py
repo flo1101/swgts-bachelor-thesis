@@ -45,12 +45,14 @@ def create_context(filenames: list[str]) -> UUID:
     new_context_id = uuid4()
     pipeline = redis_server.pipeline()
 
+    # Set initial values for the context in Redis with expiration time (seconds)
     pipeline.setex(f'context:{new_context_id}:pending_bytes', CONFIG['CONTEXT_TIMEOUT'], 0)
     pipeline.setex(f'context:{new_context_id}:pair_count', CONFIG['CONTEXT_TIMEOUT'], len(filenames))
     pipeline.setex(f'context:{new_context_id}:processed_reads', CONFIG['CONTEXT_TIMEOUT'], 0)
 
+    # Store each filename in Redis with expiration time (seconds)
     for pair_index, filename in enumerate(filenames):
-        #We save only the basename to avoid creating of directories etc.
+        # Save only the basename to avoid creating of directories etc.
         pipeline.setex(f'context:{new_context_id}:pair:{pair_index}:filename', CONFIG['CONTEXT_TIMEOUT'], path.basename(filename))
 
     pipeline.execute()
