@@ -1,12 +1,12 @@
 import "./App.css";
-import React, { useState } from "react";
+import React from "react";
 import UploadView from "./components/UploadView/UploadView.jsx";
 import InfoDialog from "./components/InfoDialog.jsx";
 import { useGetServerConfig } from "./hooks/serverConfigHooks";
-import {useHandleDialog} from "./hooks/dialogHooks";
+import { useHandleDialog } from "./hooks/dialogHooks";
 
 const App = () => {
-  const {dialogText, showDialog, closeDialog} = useHandleDialog()
+  const { dialogText, showDialog, closeDialog } = useHandleDialog();
 
   const {
     serverConfig,
@@ -14,16 +14,12 @@ const App = () => {
     serverConfigError,
     fetchServerConfig,
   } = useGetServerConfig();
-  const { bufferSize } = serverConfig;
+  const { bufferSize } = serverConfig || {};
 
   return (
     <div className="App">
-      <UploadView
-        bufferSize={bufferSize}
-      />
-      {showDialog && (
-        <InfoDialog text={dialogText} close={closeDialog} />
-      )}
+      <UploadView bufferSize={bufferSize} />
+      {showDialog && <InfoDialog text={dialogText} close={closeDialog} />}
     </div>
   );
 };
