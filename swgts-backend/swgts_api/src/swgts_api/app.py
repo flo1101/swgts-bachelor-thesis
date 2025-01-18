@@ -1,13 +1,15 @@
 # coding=utf-8
-import sys
 from typing import Union
 
 from flask import Flask, request, make_response
+from flask_cors import CORS
 
 from .context_manager import *
 from .version import VERSION_INFORMATION
 
 app = Flask(__name__)
+CORS(app)
+
 
 @app.route('/server-status', methods=['GET'])
 def server_status() -> dict[str, Union[str, float]]:
@@ -39,31 +41,30 @@ def context_create() -> dict[str, UUID]:
     return {'context': context}
 
 
-@app.route('/context/<uuid:context_id>/close', methods=['POST']) #TODO: Avoid race condition (close before last reads)
+@app.route('/context/<uuid:context_id>/close', methods=['POST'])  # TODO: Avoid race condition (close before last reads)
 def post_close_context(context_id: UUID) -> dict[str, Union[int, str, list[str]]]:
-
     if not context_exists(context_id):
         app.logger.warn(f'Tried to close non-existent context {context_id}.')
         return make_response({'message': 'No such context.'}, 404)
 
     # We test if the context still has pending bytes and only delete it if no more bytes are pending (everything is filtered)
-    pending_bytes : int = get_pending_bytes_count(context_id)
+    pending_bytes: int = get_pending_bytes_count(context_id)
     if pending_bytes != 0:
         return make_response({
-            'Retry-After': pending_bytes*get_queue_speed(context_id),
-            'message' : 'There are still reads pending, try again later!'
+            'Retry-After': pending_bytes * get_queue_speed(context_id),
+            'message': 'There are still reads pending, try again later!'
         }, 503)
 
-    result = close_context(context_id,app.config['HANDS_OFF'])
+    result = close_context(context_id, app.config['HANDS_OFF'])
     if result is None:
         return make_response({'message': 'Could not close context.'}, 500)
     else:
         app.logger.info(f'Closed context {context_id}, saved {len(result[1])} of {result[0]}.')
         return make_response({'saved': result[1], 'total': result[0]}, 200)
 
+
 @app.route('/context/<uuid:context_id>/reads', methods=['POST'])
 def post_context_reads(context_id: UUID) -> dict[str, Union[int, str]]:
-
     request_reception_time = time()
 
     # Check if the context exists
@@ -83,7 +84,8 @@ def post_context_reads(context_id: UUID) -> dict[str, Union[int, str]]:
         return make_response({'message': 'Passed read chunks are not in list format.'}, 400)
 
     effective_cumulated_chunk_size: int = 0
-    pair_count: int = get_pair_count(context_id)  # We expect as much reads to be paired as we have open file streams. (Support for strobe reads in theory)
+    pair_count: int = get_pair_count(
+        context_id)  # We expect as much reads to be paired as we have open file streams. (Support for strobe reads in theory)
 
     pairs_short_enough = []
     for pair in chunk:
@@ -91,7 +93,8 @@ def post_context_reads(context_id: UUID) -> dict[str, Union[int, str]]:
             return make_response({'message': 'There is a pair which is not a list.'}, 400)
 
         if len(pair) != pair_count:
-            return make_response({'message': f'Expected {pair_count}-paired reads but found pair with {len(pair)} reads.'}, 400)
+            return make_response(
+                {'message': f'Expected {pair_count}-paired reads but found pair with {len(pair)} reads.'}, 400)
 
         filtered_pair = []
         for read in pair:
@@ -114,11 +117,11 @@ def post_context_reads(context_id: UUID) -> dict[str, Union[int, str]]:
             # All reads fit the size and can be enqueued for filtering
             pairs_short_enough.append(filtered_pair)
 
-    current_pending : int  = get_pending_bytes_count(context_id)
-    excess : int  = current_pending + effective_cumulated_chunk_size - app.config['MAXIMUM_PENDING_BYTES']
+    current_pending: int = get_pending_bytes_count(context_id)
+    excess: int = current_pending + effective_cumulated_chunk_size - app.config['MAXIMUM_PENDING_BYTES']
 
     if effective_cumulated_chunk_size > app.config['MAXIMUM_PENDING_BYTES']:
-        resp =  make_response(
+        resp = make_response(
             {'message': f'You sent a chunk that is larger than the configured buffer size',
              'processed reads': get_processed_read_count(context_id)
              }, 413)
@@ -127,7 +130,7 @@ def post_context_reads(context_id: UUID) -> dict[str, Union[int, str]]:
         return resp
 
     elif excess > 0:
-        resp =  make_response(
+        resp = make_response(
             {'message': f'You sent too much data.',
              'pending bytes': current_pending,
              'processed reads': get_processed_read_count(context_id)
@@ -140,7 +143,7 @@ def post_context_reads(context_id: UUID) -> dict[str, Union[int, str]]:
     # Adjust pending bytes stat in redis
     current_pending = change_pending_bytes_count(context_id, effective_cumulated_chunk_size)
 
-    increase_processed_read_count(context_id, len(chunk)-len(pairs_short_enough))
+    increase_processed_read_count(context_id, len(chunk) - len(pairs_short_enough))
 
     # Enqueue valid read pairs for processing
     if len(pairs_short_enough) > 0:
@@ -149,7 +152,7 @@ def post_context_reads(context_id: UUID) -> dict[str, Union[int, str]]:
     return make_response({
         'processed reads': get_processed_read_count(context_id),
         'pending bytes': current_pending},
-                         200)
+        200)
 
 
 # Load the default configuration from 'config.py'
