@@ -1,12 +1,13 @@
 import logging
 import os
+import pathlib
+import sys
 from os import path
+from time import time
 from typing import Tuple, Optional, Any
 from uuid import UUID, uuid4
+
 from redis import Redis
-from time import time
-import sys
-import pathlib
 
 lo = logging.getLogger('Context Manager')
 lo.setLevel('INFO')
@@ -19,6 +20,7 @@ def setup_state_server(config: dict[str, Any]):
     global CONFIG, redis_server
     CONFIG = config
     redis_server = Redis(host=config.get('REDIS_SERVER'))
+
 
 def redis_ping() -> bool:
     return redis_server.ping()
@@ -35,11 +37,14 @@ def get_pair_count(context: UUID) -> int:
 def get_pending_bytes_count(context: UUID) -> int:
     return int(redis_server.get(f'context:{context}:pending_bytes'))
 
+
 def get_processed_read_count(context: UUID) -> int:
     return int(redis_server.get(f'context:{context}:processed_reads'))
 
+
 def increase_processed_read_count(context: UUID, amount: int) -> int:
     return int(redis_server.incrby(f'context:{context}:processed_reads', amount))
+
 
 def create_context(filenames: list[str]) -> UUID:
     new_context_id = uuid4()
@@ -53,31 +58,35 @@ def create_context(filenames: list[str]) -> UUID:
     # Store each filename in Redis with expiration time (seconds)
     for pair_index, filename in enumerate(filenames):
         # Save only the basename to avoid creating of directories etc.
-        pipeline.setex(f'context:{new_context_id}:pair:{pair_index}:filename', CONFIG['CONTEXT_TIMEOUT'], path.basename(filename))
+        pipeline.setex(f'context:{new_context_id}:pair:{pair_index}:filename', CONFIG['CONTEXT_TIMEOUT'],
+                       path.basename(filename))
 
     pipeline.execute()
     return new_context_id
+
 
 def change_pending_bytes_count(context: UUID, diff: int) -> int:
     now_pending = redis_server.incrby(f'context:{context}:pending_bytes', diff)
     redis_server.expire(f'context:{context}:pending_bytes', CONFIG['CONTEXT_TIMEOUT'])
     return int(now_pending)
 
-def enqueue_chunks(chunks : list[list[list[str]]], context_id:UUID, effective_cumulated_chunk_size:int, request_reception_time: float):
+
+def enqueue_chunks(chunks: list[list[list[str]]], context_id: UUID, effective_cumulated_chunk_size: int,
+                   request_reception_time: float):
     job_id = uuid4()
-    read_count : int = len(chunks)
+    read_count: int = len(chunks)
     if read_count == 0:
         # Nothing to enqueue
         lo.error(f'I won\'t enqueue an empty job.')
         return
     else:
         lo.info(f'Enqueueueing {read_count} reads as job {job_id}.')
-    pair_count : int = len(chunks[0])
+    pair_count: int = len(chunks[0])
 
-    #TODO: Implement cleanup strategy for orphaned jobs
+    # TODO: Implement cleanup strategy for orphaned jobs
     transaction = redis_server.pipeline(transaction=True)
-    transaction.lpush(f'work:{job_id}',f"{context_id}") #Implicit conversion to string
-    transaction.lpush(f'work:{job_id}',effective_cumulated_chunk_size)
+    transaction.lpush(f'work:{job_id}', f"{context_id}")  # Implicit conversion to string
+    transaction.lpush(f'work:{job_id}', effective_cumulated_chunk_size)
     transaction.lpush(f'work:{job_id}', read_count)  # Number of paired reads
     transaction.lpush(f'work:{job_id}', pair_count)  # Pair Count
     transaction.lpush(f'work:{job_id}', request_reception_time)  # Time Enqueue
@@ -85,16 +94,19 @@ def enqueue_chunks(chunks : list[list[list[str]]], context_id:UUID, effective_cu
     for read_idx, reads in enumerate(chunks):
         for pair_idx, read in enumerate(chunks[read_idx]):
             for line in chunks[read_idx][pair_idx]:
-                transaction.lpush(f'work:{job_id}',line)
-    transaction.lpush(f'work:queue', f"{job_id}") #Implicit conversion to string
+                transaction.lpush(f'work:{job_id}', line)
+    transaction.lpush(f'work:queue', f"{job_id}")  # Implicit conversion to string
     transaction.execute()
 
+
 def get_queue_speed(context: UUID) -> float:
-    last_speed_measurements = [float(x.decode()) for x in redis_server.lrange(f'context:{context}:speed',0,-1)]
+    last_speed_measurements = [float(x.decode()) for x in redis_server.lrange(f'context:{context}:speed', 0, -1)]
     if len(last_speed_measurements) == 0:
         return 0
     else:
         return sum(last_speed_measurements) / len(last_speed_measurements)
+
+
 def close_context(context: UUID, hands_off: bool) -> Tuple[int, list[str]]:
     # FIXME sanity check redis response
     # FIXME redis-server-side CONTEXT_TIMEOUT may happen while writing
@@ -108,11 +120,12 @@ def close_context(context: UUID, hands_off: bool) -> Tuple[int, list[str]]:
     pair_count = int(redis_server.get(f'context:{context}:pair_count'))
     redis_server.delete(f'context:{context}:pair_count')
 
-    saved_reads_ids = list(read.split(b'\n', 1)[0].decode('ascii') for read in redis_server.smembers(f'context:{context}:pair:{0}:reads'))
+    saved_reads_ids = list(
+        read.split(b'\n', 1)[0].decode('ascii') for read in redis_server.smembers(f'context:{context}:pair:{0}:reads'))
 
     for pair_index in range(pair_count):
-        #redis_server.persist(f'context:{context}:pair:{pair_index}:filename')
-        #redis_server.persist(f'context:{context}:pair:{pair_index}:reads')
+        # redis_server.persist(f'context:{context}:pair:{pair_index}:filename')
+        # redis_server.persist(f'context:{context}:pair:{pair_index}:reads')
 
         output_filename = redis_server.get(f'context:{context}:pair:{pair_index}:filename').decode('utf-8')
         redis_server.delete(f'context:{context}:pair:{pair_index}:filename')
@@ -129,7 +142,7 @@ def close_context(context: UUID, hands_off: bool) -> Tuple[int, list[str]]:
     redis_server.delete(f'context:{context}:speed')
 
     finishing_time = time()
-    lo.info(f'Closed Context {context} in {finishing_time-starting_time} seconds')
+    lo.info(f'Closed Context {context} in {finishing_time - starting_time} seconds')
 
     return processed_reads, saved_reads_ids
 
@@ -138,12 +151,14 @@ def get_saved_read_count(context: UUID) -> int:
     # We assume that this context has at least 1 file.
     return int(redis_server.scard(f'context:{context}:pair:0:reads'))
 
+
 def share_timeout(timeout: int) -> None:
     if not redis_server.set('config:expiry', timeout):
         lo.error('Expiry config value cannot be set ...')
         sys.exit(-2)
     else:
         lo.info('Wrote timeout config value into redis')
+
 
 def increment_processed_bases(bases: int) -> None:
     redis_server.incrby('stats:bases', bases)
