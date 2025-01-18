@@ -44,14 +44,14 @@ def context_create() -> dict[str, UUID]:
 @app.route('/context/<uuid:context_id>/close', methods=['POST'])  # TODO: Avoid race condition (close before last reads)
 def post_close_context(context_id: UUID) -> dict[str, Union[int, str, list[str]]]:
     if not context_exists(context_id):
-        app.logger.warn(f'Tried to close non-existent context {context_id}.')
+        app.logger.warning(f'Tried to close non-existent context {context_id}.')
         return make_response({'message': 'No such context.'}, 404)
 
     # We test if the context still has pending bytes and only delete it if no more bytes are pending (everything is filtered)
     pending_bytes: int = get_pending_bytes_count(context_id)
     if pending_bytes != 0:
         return make_response({
-            'Retry-After': pending_bytes * get_queue_speed(context_id),
+            'retryAfter': pending_bytes * get_queue_speed(context_id),
             'message': 'There are still reads pending, try again later!'
         }, 503)
 
@@ -123,20 +123,18 @@ def post_context_reads(context_id: UUID) -> dict[str, Union[int, str]]:
     if effective_cumulated_chunk_size > app.config['MAXIMUM_PENDING_BYTES']:
         resp = make_response(
             {'message': f'You sent a chunk that is larger than the configured buffer size',
-             'processed reads': get_processed_read_count(context_id)
+             'processedReads': get_processed_read_count(context_id),
+             'retryAfter': excess * get_queue_speed(context_id)  # current average response time
              }, 413)
-        # Fetch current average processing
-        resp.headers['Retry-After'] = excess * get_queue_speed(context_id)
         return resp
 
     elif excess > 0:
         resp = make_response(
             {'message': f'You sent too much data.',
-             'pending bytes': current_pending,
-             'processed reads': get_processed_read_count(context_id)
+             'pendingBytes': current_pending,
+             'processedReads': get_processed_read_count(context_id),
+             'retryAfter': excess * get_queue_speed(context_id)  # current average response time
              }, 422)
-        # Fetch current average processing
-        resp.headers['Retry-After'] = excess * get_queue_speed(context_id)
         return resp
 
     # Execution from here on means accepting the chunk and processing the reads
@@ -150,8 +148,8 @@ def post_context_reads(context_id: UUID) -> dict[str, Union[int, str]]:
         enqueue_chunks(pairs_short_enough, context_id, effective_cumulated_chunk_size, request_reception_time)
 
     return make_response({
-        'processed reads': get_processed_read_count(context_id),
-        'pending bytes': current_pending},
+        'processedReads': get_processed_read_count(context_id),
+        'pendingBytes': current_pending},
         200)
 
 
