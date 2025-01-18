@@ -102,7 +102,7 @@ def enqueue_chunks(chunks: list[list[list[str]]], context_id: UUID, effective_cu
 def get_queue_speed(context: UUID) -> float:
     last_speed_measurements = [float(x.decode()) for x in redis_server.lrange(f'context:{context}:speed', 0, -1)]
     if len(last_speed_measurements) == 0:
-        return 0
+        return 0.000009
     else:
         return sum(last_speed_measurements) / len(last_speed_measurements)
 
