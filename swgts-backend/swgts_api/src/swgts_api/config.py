@@ -22,5 +22,4 @@ MAXIMUM_PENDING_BYTES: int = 300000
 CONTEXT_TIMEOUT: int = 60
 
 # docker name or hostname of the redis service
-# REDIS_SERVER: str = 'redis' # production
-REDIS_SERVER: str = '172.18.0.2'  # development
+REDIS_SERVER: str = 'redis'  # production
