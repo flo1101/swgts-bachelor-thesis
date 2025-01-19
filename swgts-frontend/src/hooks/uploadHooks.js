@@ -25,7 +25,7 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // Worker thread to process chunks of FASTQ data
 const workerThread = async (
   lines,
-  context,
+  contextId,
   setReadsProgressed,
   setBufferFill,
   setReadsFiltered,
@@ -33,7 +33,6 @@ const workerThread = async (
 ) => {
   let buffer = [];
   let currentSize = 0;
-  let processedReads = 0; // TODO: keep track of and update processed reads
 
   for (let i = 0; i < lines[0].length; i += 4) {
     const readSize = lines
@@ -51,10 +50,12 @@ const workerThread = async (
         if (attempts >= MAX_ATTEMPTS) throw new Error("Max attempts reached");
 
         try {
-          const response = await sendFASTQPackage(buffer, context);
+          const response = await sendFASTQPackage(buffer, contextId);
 
           if (response.status === 200) {
-            setBufferFill(response.data.pendingBytes);
+            const { processedReads, pendingBytes } = response.data;
+            setReadsProgressed(processedReads);
+            setBufferFill(pendingBytes);
             break;
           } else {
             throw new Error(`Unexpected response: ${response.status}`);
@@ -69,6 +70,7 @@ const workerThread = async (
             );
             setBufferFill(pendingBytes);
             setReadsFiltered(processedReads);
+            setReadsProgressed(processedReads);
             await sleep(retryAfter * 1000);
           } else {
             attempts++;
@@ -83,7 +85,6 @@ const workerThread = async (
 
     buffer.push(lines.map((lines) => lines.slice(i, i + 4)));
     currentSize += readSize;
-    setReadsProgressed(1);
   }
 };
 
@@ -111,7 +112,7 @@ const createAndHandleThreads = async (
   fqsAsText,
   lineCount,
   contextId,
-  updateReadsProgressed,
+  setReadsProgressed,
   setBufferFill,
   setReadsFiltered,
   bufferSize,
@@ -131,7 +132,7 @@ const createAndHandleThreads = async (
     return workerThread(
       linesForWorker,
       contextId,
-      updateReadsProgressed,
+      setReadsProgressed,
       setBufferFill,
       setReadsFiltered,
       bufferSize,
@@ -190,11 +191,7 @@ const createContext = async (files) => {
 };
 
 // Closes the context and returns saved reads
-const closeContext = async (
-  contextId,
-  setBufferFill,
-  updateReadsProgressed,
-) => {
+const closeContext = async (contextId, setBufferFill, setReadsProgressed) => {
   try {
     const { data } = await axios.post(
       `${API_BASE_URL}/context/${contextId}/close`,
@@ -202,22 +199,24 @@ const closeContext = async (
         context: contextId,
       },
     );
-    return data.saved;
+    const { readsProcessed, readsSaved } = data;
+    setReadsProgressed(readsProcessed);
+    return readsSaved;
   } catch (error) {
     // When data processing isn't finished yet, call closeContext recursively after timeout
     if (error.response?.status === 503) {
-      const { pendingBytes, processedReads, retryAfter } = error.response.data;
+      const {
+        pendingBytes,
+        processedReads,
+        retryAfter = 1,
+      } = error.response.data;
       console.debug(
-        `Server still working. Context ${contextId} can't be closed. Retry after ${retryAfter} seconds`,
+        `Context ${contextId} can't be closed - server still working. Retry after ${retryAfter} seconds`,
       );
-      setBufferFill(pendingBytes);
-      updateReadsProgressed(processedReads);
+      if (pendingBytes) setBufferFill(pendingBytes);
+      if (processedReads) setReadsProgressed(processedReads);
       await sleep(retryAfter * 1000);
-      return await closeContext(
-        contextId,
-        setBufferFill,
-        updateReadsProgressed,
-      );
+      return await closeContext(contextId, setBufferFill, setReadsProgressed);
     } else {
       console.error("Unexpected server error:", error.toString());
     }
@@ -253,15 +252,12 @@ export const useHandleUpload = (files, downloadFiles = false, bufferSize) => {
 
   const { displayDialog } = useHandleDialog();
 
-  const updateReadsProgressed = (value) => {
-    setReadsProgressed((prev) => prev + value);
-  };
-
   const startUpload = async () => {
     try {
       setUploading(true);
       setReadsFiltered(0);
       setReadsProgressed(0);
+      setBufferFill(0);
 
       // Read files
       const { fqsAsText, lineCount, readCount } = await readAndValidateFiles(
@@ -279,7 +275,7 @@ export const useHandleUpload = (files, downloadFiles = false, bufferSize) => {
         fqsAsText,
         lineCount,
         contextId,
-        updateReadsProgressed,
+        setReadsProgressed,
         setBufferFill,
         setReadsFiltered,
         bufferSize,
@@ -289,12 +285,12 @@ export const useHandleUpload = (files, downloadFiles = false, bufferSize) => {
       const savedReads = await closeContext(
         contextId,
         setBufferFill,
-        updateReadsProgressed,
+        setReadsProgressed,
       );
-      console.debug("Context closed:", contextId);
+      setReadsProgressed(readCount);
+      setBufferFill(0);
 
       // Download filtered files
-      console.debug(savedReads);
       if (downloadFiles) startDownload(files, savedReads, fqsAsText);
     } catch (error) {
       setUploading(false);

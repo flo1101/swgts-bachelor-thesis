@@ -51,8 +51,10 @@ def post_close_context(context_id: UUID) -> dict[str, Union[int, str, list[str]]
     pending_bytes: int = get_pending_bytes_count(context_id)
     if pending_bytes != 0:
         return make_response({
+            'message': 'There are still reads pending, try again later!',
             'retryAfter': pending_bytes * get_queue_speed(context_id),
-            'message': 'There are still reads pending, try again later!'
+            'processedReads': get_processed_read_count(context_id),
+            'pendingBytes': pending_bytes
         }, 503)
 
     result = close_context(context_id, app.config['HANDS_OFF'])
@@ -60,7 +62,7 @@ def post_close_context(context_id: UUID) -> dict[str, Union[int, str, list[str]]
         return make_response({'message': 'Could not close context.'}, 500)
     else:
         app.logger.info(f'Closed context {context_id}, saved {len(result[1])} of {result[0]}.')
-        return make_response({'saved': result[1], 'total': result[0]}, 200)
+        return make_response({'readsSaved': result[1], 'readsProcessed': result[0]}, 200)
 
 
 @app.route('/context/<uuid:context_id>/reads', methods=['POST'])

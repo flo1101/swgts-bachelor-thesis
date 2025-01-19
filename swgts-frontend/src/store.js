@@ -7,13 +7,13 @@ const useStore = create((set) => ({
   // Handle upload
   uploading: false,
   setUploading: (uploading) => set({ uploading }),
-  readsTotal: null,
-  setReadsTotal: (readCount) => set({ readCount }),
-  readsProgressed: null,
+  readsTotal: 0,
+  setReadsTotal: (readsTotal) => set({ readsTotal }),
+  readsProgressed: 0,
   setReadsProgressed: (readsProgressed) => set({ readsProgressed }),
-  readsFiltered: null,
+  readsFiltered: 0,
   setReadsFiltered: (filtered) => set({ filtered }),
-  bufferFill: null,
+  bufferFill: 0,
   setBufferFill: (bufferFill) => set({ bufferFill }),
   // Dialog
   showDialog: false,

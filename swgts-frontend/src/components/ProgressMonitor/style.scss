@@ -1,0 +1,44 @@
+.progress-monitor {
+  .content {
+    display: flex;
+    flex-direction: column;
+    gap: 50px;
+
+    .progress-bar {
+      width: 100%;
+
+      .info {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 3px;
+
+        .labels {
+          display: flex;
+          gap: 40px;
+        }
+      }
+
+      .total {
+        width: 100%;
+        height: 50px;
+        border-radius: 5px;
+        background-color: #424242;
+        overflow: hidden;
+
+        .fill {
+          height: 100%;
+          width: 0;
+          background-color: var(--primary-blue);
+        }
+      }
+    }
+
+    .buffer-fill {
+      .total {
+        .fill {
+          background-color: white;
+        }
+      }
+    }
+  }
+}
