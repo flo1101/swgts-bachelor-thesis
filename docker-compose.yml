@@ -38,7 +38,7 @@ services:
       dockerfile: swgts-backend/swgts_filter/Dockerfile
     volumes:
       - type: bind
-        source: ./input
+        source: ./swgts-backend/input
         target: /input
         read_only: true
     networks:
