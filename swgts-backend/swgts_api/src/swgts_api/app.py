@@ -3,14 +3,25 @@ from typing import Union
 
 from flask import Flask, request, make_response
 from flask_cors import CORS
+from flask_socketio import SocketIO
 
 from .context_manager import *
 from .version import VERSION_INFORMATION
 
 app = Flask(__name__)
 CORS(app)
+socketio = SocketIO(app, debug=True, cors_allowed_origins="*")
 
 
+# SocketIO listeners
+@socketio.on("connect")
+def connected():
+    """event listener when client connects to the server"""
+    with app.app_context():
+        app.logger.info("Socket connection to client established. Waiting for data...")
+
+
+# Http routes
 @app.route('/server-status', methods=['GET'])
 def server_status() -> dict[str, Union[str, float]]:
     """Returns information about the server. Unfortunately, proper version discovery only works if the package is

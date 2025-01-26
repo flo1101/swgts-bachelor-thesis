@@ -7,6 +7,7 @@ import SelectedFiles from "./components/SelectedFiles";
 import UploadInfo from "./components/UploadInfo";
 import { useHandleUpload } from "../../hooks/uploadHooks";
 import ProgressMonitor from "../ProgressMonitor/ProgressMonitor";
+import { useHandleSocketUpload } from "../../hooks/socketHooks";
 
 export const ALLOWED_EXTENSIONS = [".fastq.gz", ".fq.gz", ".fastq", ".fq"];
 
@@ -23,6 +24,8 @@ const UploadView = ({ bufferSize }) => {
     readsFiltered,
     bufferFill,
   } = useHandleUpload(files, downloadFiles, bufferSize);
+
+  const { startSocketUpload } = useHandleSocketUpload(files, bufferSize);
 
   const addFiles = (files) => {
     if (
@@ -72,6 +75,13 @@ const UploadView = ({ bufferSize }) => {
                 label={"Start upload"}
                 disabledLabel={"No files selected"}
                 onClick={startUpload}
+              />
+              <Button
+                className={"start-upload-button"}
+                disabled={disableUpload}
+                label={"Start socket upload"}
+                disabledLabel={"No files selected"}
+                onClick={startSocketUpload}
               />
               <Checkbox
                 className={"download-files-checkbox"}
