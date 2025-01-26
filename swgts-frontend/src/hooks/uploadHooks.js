@@ -302,9 +302,9 @@ export const useHandleUpload = (files, downloadFiles = false, bufferSize) => {
   return {
     startUpload,
     uploading,
-    readsTotal: readsTotal,
-    readsProgressed: readsProgressed,
-    readsFiltered: readsFiltered,
+    readsTotal,
+    readsProgressed,
+    readsFiltered,
     bufferFill,
   };
 };

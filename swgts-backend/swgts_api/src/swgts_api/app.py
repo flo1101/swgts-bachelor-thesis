@@ -13,10 +13,11 @@ CORS(app)
 socketio = SocketIO(app, debug=True, cors_allowed_origins="*")
 
 
-def request_data():
+def request_data(requested_bytes, context_id):
     """Request data from client"""
-    app.logger.info("Requesting data from client.")
-    socketio.emit("dataRequest")
+    app.logger.info(f"({context_id}): Requesting {requested_bytes} bytes from client.")
+    # TODO: also send buffer_fill, reads_progressed, reads_filtered
+    socketio.emit("dataRequest", {"bytes": requested_bytes, "contextId": str(context_id)})
 
 
 # SocketIO listeners
@@ -24,8 +25,6 @@ def request_data():
 def handle_connect():
     """Handle successful connection with client"""
     app.logger.info("Socket connection to client established.")
-    # TODO: create context and request data (data.size = buffer_size)
-    request_data()
 
 
 @socketio.on("disconnect")
@@ -34,10 +33,33 @@ def handle_disconnect():
     app.logger.info("Socket disconnected.")
 
 
+@socketio.on("createContext")
+def handle_create_context(payload):
+    """
+    Handle context creation request from client.
+    When context has been created successfully, request data from client.
+    """
+    app.logger.info("Received context creation request from client.")
+    filenames = payload.get("filenames")
+    if filenames is None:
+        socketio.emit('contextCreationFailed', {'error': 'filenames missing in request.'}, 400)
+    if not isinstance(filenames, list):
+        socketio.emit('contextCreationFailed', {'error': 'filenames is not a list.'}, 400)
+
+    context_id = create_context(filenames=filenames)
+    if context_id is None:
+        app.logger.error('Could not create context.')
+        socketio.emit('contextCreationFailed', {'error': 'Could not create context.'}, 500)
+
+    request_data(app.config['MAXIMUM_PENDING_BYTES'], context_id)
+
+
 @socketio.on("dataUpload")
-def handle_data_upload(data):
+def handle_data_upload(payload):
     """Handle data uploaded from client"""
-    app.logger.info(f"Received data from client: {data}")
+    data = payload.get("data")
+    context_id = payload.get("contextId")
+    app.logger.info(f"({context_id}): Received data from client: {data}")
 
 
 # Http routes

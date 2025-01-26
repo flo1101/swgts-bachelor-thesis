@@ -4,6 +4,7 @@ import { useShallow } from "zustand/react/shallow";
 import { io } from "socket.io-client";
 import { API_BASE_URL } from "./serverConfigHooks";
 import { useHandleDialog } from "./dialogHooks";
+import { readAndValidateFiles } from "./uploadHooks";
 
 export const useHandleSocketUpload = (files, bufferSize) => {
   const {
@@ -36,24 +37,36 @@ export const useHandleSocketUpload = (files, bufferSize) => {
 
   const { displayDialog } = useHandleDialog();
 
-  const startSocketUpload = () => {
+  const startUpload = () => {
     if (files.length === 0) return;
     socket.connect();
   };
 
-  const uploadData = (data) => {
-    console.debug("Uploading data to server:", data);
-    socket.emit("dataUpload", data);
+  const createContext = (files) => {
+    socket.emit("createContext", {
+      filenames: files.map((f) => f.name),
+    });
+  };
+
+  const uploadData = (data, contextId) => {
+    console.debug(`(${contextId}): Uploading to server: ${data}`);
+    socket.emit("dataUpload", { data: data, contextId: contextId });
   };
 
   useEffect(() => {
-    const onConnect = () => {
+    const onConnect = async () => {
       console.debug("Socket connection to server established.");
       setUploading(true);
       setReadsProgressed(0);
       setBufferFill(0);
-      setReadsTotal(0);
       setReadsFiltered(0);
+
+      const { fqsAsText, lineCount, readCount } = await readAndValidateFiles(
+        files,
+        displayDialog,
+      );
+      setReadsTotal(readCount);
+      createContext(files);
     };
 
     const onDisconnect = () => {
@@ -61,16 +74,24 @@ export const useHandleSocketUpload = (files, bufferSize) => {
       setUploading(false);
     };
 
-    const onDataRequest = () => {
-      console.debug("Server requested data.");
-      // TODO: Get the requested amount of data
+    const onDataRequest = (payload) => {
+      // TODO: receive and update bufferFill, readsProgressed, readsFiltered
+      const { bytes, contextId } = payload;
+      console.debug(`(${contextId}): Server requested ${bytes} bytes.`);
+      // TODO: Get the requested amount of data and send it
       const data = ["Test data"];
-      uploadData(data);
+      uploadData(data, contextId);
+    };
+
+    const onContextCreationFailed = (payload) => {
+      const { error } = payload;
+      console.error(`Failed to create context: ${error}`);
     };
 
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("dataRequest", onDataRequest);
+    socket.on("contextCreationFailed", onContextCreationFailed);
 
     return () => {
       socket.off("connect");
@@ -86,7 +107,7 @@ export const useHandleSocketUpload = (files, bufferSize) => {
   ]);
 
   return {
-    startSocketUpload,
+    startSocketUpload: startUpload,
     uploading,
     readsTotal,
     readsProgressed,
