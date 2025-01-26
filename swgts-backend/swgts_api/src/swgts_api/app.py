@@ -2,11 +2,13 @@
 from typing import Union
 
 from flask import Flask, request, make_response
+from flask_cors import CORS
 
 from .context_manager import *
 from .version import VERSION_INFORMATION
 
 app = Flask(__name__)
+CORS(app)
 
 
 @app.route('/server-status', methods=['GET'])
