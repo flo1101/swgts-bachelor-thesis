@@ -13,12 +13,31 @@ CORS(app)
 socketio = SocketIO(app, debug=True, cors_allowed_origins="*")
 
 
+def request_data():
+    """Request data from client"""
+    app.logger.info("Requesting data from client.")
+    socketio.emit("dataRequest")
+
+
 # SocketIO listeners
 @socketio.on("connect")
-def connected():
-    """event listener when client connects to the server"""
-    with app.app_context():
-        app.logger.info("Socket connection to client established. Waiting for data...")
+def handle_connect():
+    """Handle successful connection with client"""
+    app.logger.info("Socket connection to client established.")
+    # TODO: create context and request data (data.size = buffer_size)
+    request_data()
+
+
+@socketio.on("disconnect")
+def handle_disconnect():
+    """Handle disconnection from client"""
+    app.logger.info("Socket disconnected.")
+
+
+@socketio.on("dataUpload")
+def handle_data_upload(data):
+    """Handle data uploaded from client"""
+    app.logger.info(f"Received data from client: {data}")
 
 
 # Http routes

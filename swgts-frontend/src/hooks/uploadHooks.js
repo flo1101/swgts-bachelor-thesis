@@ -143,7 +143,7 @@ const createAndHandleThreads = async (
 };
 
 // Read and validate uploaded files
-const readAndValidateFiles = async (files, displayDialog) => {
+export const readAndValidateFiles = async (files, displayDialog) => {
   const fqsAsText = await Promise.all(
     files.map((file) => fastqFileToLines(file)),
   );
