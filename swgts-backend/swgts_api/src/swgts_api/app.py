@@ -58,8 +58,9 @@ def handle_create_context(payload):
 def handle_data_upload(payload):
     """Handle data uploaded from client"""
     data = payload.get("data")
+    bytes = payload.get("bytes")
     context_id = payload.get("contextId")
-    app.logger.info(f"({context_id}): Received data from client: {data}")
+    app.logger.info(f"({context_id}): Received {bytes} bytes from client.")
 
 
 # Http routes

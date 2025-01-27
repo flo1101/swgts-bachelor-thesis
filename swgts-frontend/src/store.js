@@ -20,6 +20,12 @@ const useStore = create((set) => ({
   setShowDialog: (showDialog) => set({ showDialog }),
   dialogText: "",
   setDialogText: (dialogText) => set({ dialogText }),
+  lines: null,
+  setLines: (lines) => set({ lines }),
+  linesOffset: 0,
+  setLinesOffset: (linesOffset) => set({ linesOffset }),
+  readSize: 0,
+  setReadSize: (readSize) => set({ readSize }),
 }));
 
 export default useStore;

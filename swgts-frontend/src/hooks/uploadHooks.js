@@ -89,7 +89,7 @@ const workerThread = async (
 };
 
 // Helper function to transform the async file reader into a pseudo-sync-able call
-async function fastqFileToLines(file) {
+export async function fastqFileToLines(file) {
   let data = await new Promise((resolve) => {
     let fileReader = new FileReader();
     fileReader.onload = (e) => resolve(fileReader.result);

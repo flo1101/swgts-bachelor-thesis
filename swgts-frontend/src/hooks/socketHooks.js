@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import useStore from "../store";
 import { useShallow } from "zustand/react/shallow";
 import { io } from "socket.io-client";
@@ -6,7 +6,7 @@ import { API_BASE_URL } from "./serverConfigHooks";
 import { useHandleDialog } from "./dialogHooks";
 import { readAndValidateFiles } from "./uploadHooks";
 
-export const useHandleSocketUpload = (files, bufferSize) => {
+export const useHandleSocketUpload = (files) => {
   const {
     uploading,
     setUploading,
@@ -18,6 +18,12 @@ export const useHandleSocketUpload = (files, bufferSize) => {
     setReadsFiltered,
     bufferFill,
     setBufferFill,
+    lines,
+    setLines,
+    linesOffset,
+    setLinesOffset,
+    readSize,
+    setReadSize,
   } = useStore(
     useShallow((state) => ({
       uploading: state.uploading,
@@ -30,12 +36,23 @@ export const useHandleSocketUpload = (files, bufferSize) => {
       setReadsFiltered: state.setReadsFiltered,
       bufferFill: state.bufferFill,
       setBufferFill: state.setBufferFill,
+      lines: state.lines,
+      setLines: state.setLines,
+      linesOffset: state.linesOffset,
+      setLinesOffset: state.setLinesOffset,
+      readSize: state.readSize,
+      setReadSize: state.setReadSize,
     })),
   );
 
   const socket = io(API_BASE_URL, { autoConnect: false });
 
   const { displayDialog } = useHandleDialog();
+  // State that need to be accessed in socket event handlers need to be accessed via refs.
+  // Otherwise state updates won't show up
+  const linesRef = useRef(lines);
+  const readSizeRef = useRef(readSize);
+  const linesOffsetRef = useRef(linesOffset);
 
   const startUpload = () => {
     if (files.length === 0) return;
@@ -48,9 +65,28 @@ export const useHandleSocketUpload = (files, bufferSize) => {
     });
   };
 
-  const uploadData = (data, contextId) => {
-    console.debug(`(${contextId}): Uploading to server: ${data}`);
-    socket.emit("dataUpload", { data: data, contextId: contextId });
+  const getUploadData = async (bytes) => {
+    const data = [];
+    let bytesSend = 0;
+    let i = linesOffsetRef.current;
+    while (bytesSend + readSizeRef.current < bytes) {
+      data.push(linesRef.current.map((fileLines) => fileLines.slice(i, i + 4)));
+      i += 4;
+      bytesSend += readSizeRef.current;
+    }
+    setLinesOffset(i);
+    linesOffsetRef.current = i;
+
+    return { data, bytesSend };
+  };
+
+  const uploadData = (data, bytes, contextId) => {
+    console.debug(`(${contextId}): Uploading ${bytes} bytes to server.`);
+    socket.emit("dataUpload", {
+      data: data,
+      bytes: bytes,
+      contextId: contextId,
+    });
   };
 
   useEffect(() => {
@@ -61,11 +97,19 @@ export const useHandleSocketUpload = (files, bufferSize) => {
       setBufferFill(0);
       setReadsFiltered(0);
 
-      const { fqsAsText, lineCount, readCount } = await readAndValidateFiles(
+      const { fqsAsText, readCount } = await readAndValidateFiles(
         files,
         displayDialog,
       );
+      const readSize = fqsAsText
+        .map((lines) => lines[1].length)
+        .reduce((sum, num) => sum + num);
+
       setReadsTotal(readCount);
+      setLines(fqsAsText);
+      setReadSize(readSize);
+      linesRef.current = fqsAsText;
+      readSizeRef.current = readSize;
       createContext(files);
     };
 
@@ -74,13 +118,15 @@ export const useHandleSocketUpload = (files, bufferSize) => {
       setUploading(false);
     };
 
-    const onDataRequest = (payload) => {
+    const onDataRequest = async (payload) => {
       // TODO: receive and update bufferFill, readsProgressed, readsFiltered
       const { bytes, contextId } = payload;
       console.debug(`(${contextId}): Server requested ${bytes} bytes.`);
-      // TODO: Get the requested amount of data and send it
-      const data = ["Test data"];
-      uploadData(data, contextId);
+
+      if (linesRef.current) {
+        const { data, bytesSend } = await getUploadData(bytes);
+        uploadData(data, bytesSend, contextId);
+      }
     };
 
     const onContextCreationFailed = (payload) => {
@@ -93,18 +139,16 @@ export const useHandleSocketUpload = (files, bufferSize) => {
     socket.on("dataRequest", onDataRequest);
     socket.on("contextCreationFailed", onContextCreationFailed);
 
-    return () => {
-      socket.off("connect");
-      socket.off("disconnect");
-    };
-  }, [
-    socket,
-    setUploading,
-    setReadsProgressed,
-    setBufferFill,
-    setReadsTotal,
-    setReadsFiltered,
-  ]);
+    // TODO: clean up listeners when socket gets disconnected.
+    //  when done here listeners get removed immedeatly
+    // return () => {
+    //   console.debug("Remove listeners");
+    //   socket.off("connect", onConnect);
+    //   socket.off("disconnect", onDisconnect);
+    //   socket.off("dataRequest", onDataRequest);
+    //   socket.off("contextCreationFailed", onContextCreationFailed);
+    // };
+  }, [socket]);
 
   return {
     startSocketUpload: startUpload,

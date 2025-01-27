@@ -25,7 +25,7 @@ const UploadView = ({ bufferSize }) => {
     bufferFill,
   } = useHandleUpload(files, downloadFiles, bufferSize);
 
-  const { startSocketUpload } = useHandleSocketUpload(files, bufferSize);
+  const { startSocketUpload } = useHandleSocketUpload(files);
 
   const addFiles = (files) => {
     if (
@@ -78,8 +78,8 @@ const UploadView = ({ bufferSize }) => {
               />
               <Button
                 className={"start-upload-button"}
-                disabled={disableUpload}
                 label={"Start socket upload"}
+                disabled={disableUpload}
                 disabledLabel={"No files selected"}
                 onClick={startSocketUpload}
               />
