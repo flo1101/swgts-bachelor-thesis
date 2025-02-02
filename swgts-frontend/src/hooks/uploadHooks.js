@@ -28,7 +28,6 @@ const workerThread = async (
   contextId,
   setReadsProgressed,
   setBufferFill,
-  setReadsFiltered,
   bufferSize,
 ) => {
   let buffer = [];
@@ -69,7 +68,6 @@ const workerThread = async (
               `422 response received, slowing down... Retry after ${retryAfter} seconds`,
             );
             setBufferFill(pendingBytes);
-            setReadsFiltered(processedReads);
             setReadsProgressed(processedReads);
             await sleep(retryAfter * 1000);
           } else {
@@ -114,7 +112,6 @@ const createAndHandleThreads = async (
   contextId,
   setReadsProgressed,
   setBufferFill,
-  setReadsFiltered,
   bufferSize,
 ) => {
   const readCount = lineCount / 4;
@@ -134,7 +131,6 @@ const createAndHandleThreads = async (
       contextId,
       setReadsProgressed,
       setBufferFill,
-      setReadsFiltered,
       bufferSize,
     );
   });
@@ -231,8 +227,6 @@ export const useHandleUpload = (files, downloadFiles = false, bufferSize) => {
     setReadsTotal,
     readsProgressed,
     setReadsProgressed,
-    readsFiltered,
-    setReadsFiltered,
     bufferFill,
     setBufferFill,
   } = useStore(
@@ -243,8 +237,6 @@ export const useHandleUpload = (files, downloadFiles = false, bufferSize) => {
       setReadsTotal: state.setReadsTotal,
       readsProgressed: state.readsProgressed,
       setReadsProgressed: state.setReadsProgressed,
-      readsFiltered: state.readsFiltered,
-      setReadsFiltered: state.setReadsFiltered,
       bufferFill: state.bufferFill,
       setBufferFill: state.setBufferFill,
     })),
@@ -255,7 +247,6 @@ export const useHandleUpload = (files, downloadFiles = false, bufferSize) => {
   const startUpload = async () => {
     try {
       setUploading(true);
-      setReadsFiltered(0);
       setReadsProgressed(0);
       setBufferFill(0);
 
@@ -277,7 +268,6 @@ export const useHandleUpload = (files, downloadFiles = false, bufferSize) => {
         contextId,
         setReadsProgressed,
         setBufferFill,
-        setReadsFiltered,
         bufferSize,
       );
 
@@ -304,7 +294,6 @@ export const useHandleUpload = (files, downloadFiles = false, bufferSize) => {
     uploading,
     readsTotal,
     readsProgressed,
-    readsFiltered,
     bufferFill,
   };
 };

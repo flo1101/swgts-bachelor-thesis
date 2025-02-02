@@ -11,8 +11,6 @@ const useStore = create((set) => ({
   setReadsTotal: (readsTotal) => set({ readsTotal }),
   readsProgressed: 0,
   setReadsProgressed: (readsProgressed) => set({ readsProgressed }),
-  readsFiltered: 0,
-  setReadsFiltered: (filtered) => set({ filtered }),
   bufferFill: 0,
   setBufferFill: (bufferFill) => set({ bufferFill }),
   // Dialog

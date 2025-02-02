@@ -16,14 +16,8 @@ const UploadView = ({ bufferSize }) => {
   const [downloadFiles, setDownloadFiles] = useState(false);
   const disableUpload = files.length <= 0;
 
-  const {
-    startUpload,
-    uploading,
-    readsTotal,
-    readsProgressed,
-    readsFiltered,
-    bufferFill,
-  } = useHandleUpload(files, downloadFiles, bufferSize);
+  const { startUpload, uploading, readsTotal, readsProgressed, bufferFill } =
+    useHandleUpload(files, downloadFiles, bufferSize);
 
   const { startSocketUpload } = useHandleSocketUpload(files);
 
@@ -59,7 +53,6 @@ const UploadView = ({ bufferSize }) => {
           bufferSize={bufferSize}
           readsTotal={readsTotal}
           readsProgressed={readsProgressed}
-          readsFiltered={readsFiltered}
           bufferFill={bufferFill}
         />
       ) : (

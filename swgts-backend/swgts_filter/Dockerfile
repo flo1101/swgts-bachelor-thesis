@@ -18,6 +18,10 @@ RUN pip wheel --wheel-dir wheels ./swgts_filter
 FROM python:$PYTHON_IMAGE_TAG
 
 COPY --from=backend-builder wheels wheels
+COPY ../../requirements.txt .
+
+# Install the dependencies from requirements.txt
+RUN pip install -r requirements.txt
 
 # Install our application, and its dependencies
 RUN pip install wheels/*.whl && \

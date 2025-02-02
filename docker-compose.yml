@@ -41,9 +41,10 @@ services:
         source: ./swgts-backend/input
         target: /input
         read_only: true
-    networks:
-      - redis-filter
+    #    networks:
+    #      - redis-filter
     restart: unless-stopped
+    network_mode: "host"
     depends_on:
       redis:
         condition: service_healthy
@@ -51,10 +52,11 @@ services:
 
   redis:
     image: "redis:7-alpine"
+    network_mode: "host"
     hostname: redis
-    networks:
-      - redis-filter
-      - api-redis
+    #    networks:
+    #      - redis-filter
+    #      - api-redis
     volumes:
       - type: volume
         source: cache
@@ -119,14 +121,14 @@ volumes:
   cache:
     driver: local
 
-networks:
+  #networks:
   #    outside-traefik:
   #        internal: false
   #    traefik-frontend:
   #        internal: true
   #    traefik-api:
   #        internal: true
-  api-redis:
-    internal: true
-  redis-filter:
-    internal: true
+#  api-redis:
+#    internal: true
+#  redis-filter:
+#    internal: true

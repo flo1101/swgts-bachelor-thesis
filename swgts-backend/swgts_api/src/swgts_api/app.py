@@ -1,23 +1,24 @@
 # coding=utf-8
 from typing import Union
 
-from flask import Flask, request, make_response
+from flask import Flask, request, make_response, Response
 from flask_cors import CORS
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO, join_room
 
 from .context_manager import *
 from .version import VERSION_INFORMATION
 
 app = Flask(__name__)
 CORS(app)
-socketio = SocketIO(app, debug=True, cors_allowed_origins="*")
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 
 def request_data(requested_bytes, context_id):
     """Request data from client"""
     app.logger.info(f"({context_id}): Requesting {requested_bytes} bytes from client.")
-    # TODO: also send buffer_fill, reads_progressed, reads_filtered
-    socketio.emit("dataRequest", {"bytes": requested_bytes, "contextId": str(context_id)})
+    socketio.emit("dataRequest", {"bytes": requested_bytes, "contextId": str(context_id),
+                                  "bufferFill": get_pending_bytes_count(context_id),
+                                  "processedReads": get_processed_read_count(context_id)}, to=str(context_id))
 
 
 # SocketIO listeners
@@ -30,6 +31,7 @@ def handle_connect():
 @socketio.on("disconnect")
 def handle_disconnect():
     """Handle disconnection from client"""
+    # Socket leaves rooms automatically on disconnect
     app.logger.info("Socket disconnected.")
 
 
@@ -41,29 +43,158 @@ def handle_create_context(payload):
     """
     app.logger.info("Received context creation request from client.")
     filenames = payload.get("filenames")
+    session_id = request.sid  # if context creation fails use session id to send error message
+
     if filenames is None:
-        socketio.emit('contextCreationFailed', {'error': 'filenames missing in request.'}, 400)
+        socketio.emit('contextCreationError', {'message': 'filenames missing in request.'}, to=session_id)
+        return
     if not isinstance(filenames, list):
-        socketio.emit('contextCreationFailed', {'error': 'filenames is not a list.'}, 400)
+        socketio.emit('contextCreationError', {'message': 'filenames is not a list.'}, to=session_id)
+        return
 
     context_id = create_context(filenames=filenames)
     if context_id is None:
         app.logger.error('Could not create context.')
-        socketio.emit('contextCreationFailed', {'error': 'Could not create context.'}, 500)
+        socketio.emit('contextCreationError', {'message': 'Could not create context.'}, to=session_id)
+        return
 
+    # To emit messages to a specific client/context, the context_id is used to create a client/context specific room
+    join_room(str(context_id))
     request_data(app.config['MAXIMUM_PENDING_BYTES'], context_id)
+
+
+@socketio.on("closeContext")
+def handle_close_context(payload):
+    """Handle context closing request from client"""
+    context_id = payload.get("contextId")
+    if not context_exists(context_id):
+        socketio.emit("contextCloseError", {'message': f'Tried to close non-existent context {context_id}.'},
+                      to=str(context_id))
+        return
+
+    app.logger.info(f"({context_id}): Received context closing request from client.")
+
+    # We test if the context still has pending bytes and only delete it if no more bytes are pending (everything is filtered)
+    pending_bytes: int = get_pending_bytes_count(context_id)
+    if pending_bytes != 0:
+        socketio.emit("contextCloseError", {'message': 'There are still reads pending, try again later!'},
+                      to=str(context_id))
+        return
+
+    result = close_context(context_id, app.config['HANDS_OFF'])
+    if result is None:
+        socketio.emit("contextCloseError", {'message': 'Could not close context'}, to=str(context_id))
+        return
+    else:
+        socketio.emit("contextClosed", {'contextId': context_id, 'savedReads': result[1], 'processedReads': result[0]},
+                      to=str(context_id))
+        app.logger.info(f'({context_id}): Closed context, saved {len(result[1])} of {result[0]}.')
+        return
 
 
 @socketio.on("dataUpload")
 def handle_data_upload(payload):
     """Handle data uploaded from client"""
-    data = payload.get("data")
-    bytes = payload.get("bytes")
-    context_id = payload.get("contextId")
+    # TODO: Keep track of client latency for estimation when to request new data
+    request_reception_time = time()
+
+    # TODO: Update readsFiltered
+    chunk: list[list[list[str]]] = payload.get("data")
+    bytes: int = payload.get("bytes")
+    context_id: UUID = payload.get("contextId")
     app.logger.info(f"({context_id}): Received {bytes} bytes from client.")
+
+    if not context_exists(context_id):
+        socketio.emit("dataUploadError", {'message': f'No context with id {context_id} found.'}, to=str(context_id))
+
+    if not isinstance(chunk, list):
+        socketio.emit("dataUploadError", {'message': 'Passed read chunks are not in list format.'}, to=str(context_id))
+
+    effective_cumulated_chunk_size: int = 0
+    pair_count: int = get_pair_count(
+        context_id)  # We expect as many reads to be paired as we have open file streams. (Support for strobe reads in theory)
+
+    pairs_short_enough = []
+    for pair in chunk:
+        if not isinstance(pair, list):
+            socketio.emit("dataUploadError", {'message': 'There is a pair which is not a list.'}, to=str(context_id))
+
+        if len(pair) != pair_count:
+            socketio.emit("dataUploadError",
+                          {'message': f'Expected {pair_count}-paired reads but found pair with {len(pair)} reads.'},
+                          to=str(context_id))
+
+        filtered_pair = []
+        for read in pair:
+            if not isinstance(read, list):
+                socketio.emit("dataUploadError", {'message': 'There is a read which is not a list.'},
+                              to=str(context_id))
+            if len(read) != 4:
+                socketio.emit("dataUploadError", {'message': 'There is a read with a length != 4.'}, to=str(context_id))
+            # Here would be the place to perform additional sanity checks
+
+            # Check if the read length is within the allowed buffer size
+            if len(read[1]) <= app.config['MAXIMUM_PENDING_BYTES']:
+                # Only count the length of the actual sequence
+                effective_cumulated_chunk_size += len(read[1])
+                filtered_pair.append(read)
+            else:
+                increment_processed_bases(len(read[1]))
+                # The read will be discarded anyway and doesn't matter for buffer calculation
+                break
+        else:
+            # All reads fit the size and can be enqueued for filtering
+            pairs_short_enough.append(filtered_pair)
+
+    current_pending: int = get_pending_bytes_count(context_id)
+    excess: int = current_pending + effective_cumulated_chunk_size - app.config['MAXIMUM_PENDING_BYTES']
+
+    if effective_cumulated_chunk_size > app.config['MAXIMUM_PENDING_BYTES']:
+        app.logger.info(f"({context_id}): You sent a chunk that is larger than the configured buffer size.")
+        app.logger.info(
+            f"Effective cumulated chunk size: {effective_cumulated_chunk_size}. Buffer size: {app.config['MAXIMUM_PENDING_BYTES']}.")
+
+        socketio.emit("dataUploadError", {'message': 'You sent a chunk that is larger than the configured buffer size'},
+                      to=str(context_id))
+        return
+
+    elif excess > 0:
+        socketio.emit("dataUploadError", {'message': 'You sent too much data.'}, to=str(context_id))
+        return
+
+    # Execution from here on means accepting the chunk and processing the reads
+    # Adjust pending bytes stat in redis
+    change_pending_bytes_count(context_id, effective_cumulated_chunk_size)
+    increase_processed_read_count(context_id, len(chunk) - len(pairs_short_enough))
+
+    # Enqueue valid read pairs for processing
+    if len(pairs_short_enough) > 0:
+        enqueue_chunks(pairs_short_enough, context_id, effective_cumulated_chunk_size, request_reception_time)
 
 
 # Http routes
+@app.route('/context/<uuid:context_id>/request-data', methods=['POST'])
+def post_request_data(context_id: UUID) -> Response:
+    """Called by filters to requests data from client once data in buffer has been processed"""
+    if not context_exists(context_id):
+        app.logger.warning(f'Tried to request data from non-existent context {context_id}.')
+        return make_response({'message': 'No such context.'}, 404)
+
+    json_body: dict[str, Any]
+    try:
+        json_body = request.get_json()
+        if 'pendingBytes' not in json_body:
+            return make_response({'message': 'pendingBytes missing in request.'}, 400)
+        if not isinstance(json_body['pendingBytes'], int):
+            return make_response({'message': 'pendingBytes is not an integer.'}, 400)
+    except TypeError:
+        return make_response({'message': 'expected json body.'}, 400)
+
+    requested_bytes = app.config['MAXIMUM_PENDING_BYTES'] - json_body['pendingBytes']
+    request_data(requested_bytes, context_id)
+    return make_response({'message': 'Data requested.'}, 200)
+
+
 @app.route('/server-status', methods=['GET'])
 def server_status() -> dict[str, Union[str, float]]:
     """Returns information about the server. Unfortunately, proper version discovery only works if the package is
@@ -196,6 +327,7 @@ def post_context_reads(context_id: UUID) -> dict[str, Union[int, str]]:
     # Adjust pending bytes stat in redis
     current_pending = change_pending_bytes_count(context_id, effective_cumulated_chunk_size)
 
+    # TODO: Why do we already increase the processed reads count here? Shouldn't we wait until the reads are actually processed?
     increase_processed_read_count(context_id, len(chunk) - len(pairs_short_enough))
 
     # Enqueue valid read pairs for processing

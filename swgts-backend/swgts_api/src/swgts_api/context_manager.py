@@ -80,7 +80,7 @@ def enqueue_chunks(chunks: list[list[list[str]]], context_id: UUID, effective_cu
         lo.error(f'I won\'t enqueue an empty job.')
         return
     else:
-        lo.info(f'Enqueueueing {read_count} reads as job {job_id}.')
+        lo.info(f'Enqueueing {read_count} reads as job {job_id}.')
     pair_count: int = len(chunks[0])
 
     # TODO: Implement cleanup strategy for orphaned jobs

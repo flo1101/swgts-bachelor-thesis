@@ -14,8 +14,6 @@ export const useHandleSocketUpload = (files) => {
     setReadsTotal,
     readsProgressed,
     setReadsProgressed,
-    readsFiltered,
-    setReadsFiltered,
     bufferFill,
     setBufferFill,
     lines,
@@ -32,8 +30,6 @@ export const useHandleSocketUpload = (files) => {
       setReadsTotal: state.setReadsTotal,
       readsProgressed: state.readsProgressed,
       setReadsProgressed: state.setReadsProgressed,
-      readsFiltered: state.readsFiltered,
-      setReadsFiltered: state.setReadsFiltered,
       bufferFill: state.bufferFill,
       setBufferFill: state.setBufferFill,
       lines: state.lines,
@@ -65,15 +61,33 @@ export const useHandleSocketUpload = (files) => {
     });
   };
 
+  const closeContext = (contextId) => {
+    if (contextId)
+      socket.emit("closeContext", {
+        contextId: contextId,
+      });
+  };
+
   const getUploadData = async (bytes) => {
     const data = [];
     let bytesSend = 0;
     let i = linesOffsetRef.current;
-    while (bytesSend + readSizeRef.current < bytes) {
-      data.push(linesRef.current.map((fileLines) => fileLines.slice(i, i + 4)));
+    const linesTotal = linesRef.current[0].length;
+
+    // When all reads have been sent, return empty data to close context
+    if (i >= linesTotal) return { data, bytesSend: 0 };
+
+    while (i < linesTotal) {
+      const read = linesRef.current.map((fileLines) =>
+        fileLines.slice(i, i + 4),
+      );
+      const readSize = read[0][1].length;
+      if (bytesSend + readSize >= bytes) break;
+      data.push(read);
       i += 4;
-      bytesSend += readSizeRef.current;
+      bytesSend += readSize;
     }
+
     setLinesOffset(i);
     linesOffsetRef.current = i;
 
@@ -95,7 +109,6 @@ export const useHandleSocketUpload = (files) => {
       setUploading(true);
       setReadsProgressed(0);
       setBufferFill(0);
-      setReadsFiltered(0);
 
       const { fqsAsText, readCount } = await readAndValidateFiles(
         files,
@@ -115,29 +128,60 @@ export const useHandleSocketUpload = (files) => {
 
     const onDisconnect = () => {
       console.debug("Socket disconnected.");
-      setUploading(false);
     };
 
     const onDataRequest = async (payload) => {
-      // TODO: receive and update bufferFill, readsProgressed, readsFiltered
-      const { bytes, contextId } = payload;
+      const { bytes, contextId, bufferFill, processedReads } = payload;
       console.debug(`(${contextId}): Server requested ${bytes} bytes.`);
+      setBufferFill(bufferFill);
+      setReadsProgressed(processedReads);
 
       if (linesRef.current) {
         const { data, bytesSend } = await getUploadData(bytes);
-        uploadData(data, bytesSend, contextId);
+
+        if (data.length === 0) {
+          console.debug(
+            `(${contextId}): All reads sent. Request closing context.`,
+          );
+          closeContext(contextId);
+        } else uploadData(data, bytesSend, contextId);
       }
     };
 
-    const onContextCreationFailed = (payload) => {
-      const { error } = payload;
-      console.error(`Failed to create context: ${error}`);
+    // Received on successful close of context
+    const onContextClosed = (payload) => {
+      const { contextId, processedReads, savedReads } = payload;
+      console.debug(
+        `(${contextId}): Context closed. ${processedReads} reads processed.`,
+      );
+      // TODO: download filtered reads
+      setReadsProgressed(processedReads);
+      socket.disconnect();
+      // setUploading(false);
+    };
+
+    const onContextCreationError = (payload) => {
+      const { message } = payload;
+      console.error(`Failed to create context: ${message}`);
+    };
+
+    const onContextCloseError = (payload) => {
+      const { message } = payload;
+      console.error(`Failed to close context: ${message}`);
+    };
+
+    const onDataUploadError = (payload) => {
+      const { message } = payload;
+      console.error(`Failed to upload data: ${message}`);
     };
 
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
     socket.on("dataRequest", onDataRequest);
-    socket.on("contextCreationFailed", onContextCreationFailed);
+    socket.on("contextClosed", onContextClosed);
+    socket.on("contextCloseError", onContextCloseError);
+    socket.on("contextCreationError", onContextCreationError);
+    socket.on("dataUploadError", onDataUploadError);
 
     // TODO: clean up listeners when socket gets disconnected.
     //  when done here listeners get removed immedeatly
@@ -146,7 +190,8 @@ export const useHandleSocketUpload = (files) => {
     //   socket.off("connect", onConnect);
     //   socket.off("disconnect", onDisconnect);
     //   socket.off("dataRequest", onDataRequest);
-    //   socket.off("contextCreationFailed", onContextCreationFailed);
+    //   socket.off("contextCreationError", onContextCreationError);
+    // sokcet.off("dataUploadError", onDataUploadError);
     // };
   }, [socket]);
 
@@ -155,7 +200,6 @@ export const useHandleSocketUpload = (files) => {
     uploading,
     readsTotal,
     readsProgressed,
-    readsFiltered,
     bufferFill,
   };
 };
