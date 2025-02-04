@@ -22,8 +22,8 @@ MAPPING_PRESET: str = 'map-ont'
 MINIMAP2_QUALITY_THRESHOLD: int = 20
 
 # docker name or hostname of the redis service
-REDIS_SERVER: str = 'localhost'  # developement
-# REDIS_SERVER: str = 'redis' # production
+REDIS_SERVER: str = 'redis'  # production
+# REDIS_SERVER: str = 'localhost'  # developement
 
 # Number of concurrent worker threads used for filtering
 WORKER_THREADS: int = 8

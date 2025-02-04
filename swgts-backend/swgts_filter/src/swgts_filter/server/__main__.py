@@ -23,9 +23,8 @@ else:
 # This is the same timeout that is used in the api portion, the timeout value is exchanged via redis
 CONTEXT_TIMEOUT = None
 
-# For developement use docker bridge interface for swgts-filter service to send http request to locally running backend
-# TODO: for production adjust this to run in same docker network
-API_BASE_URL = 'http://192.168.0.170:5000/'
+# API_BASE_URL = 'http://localhost:5000/' # developement
+API_BASE_URL = 'https://localhost/api/'  # production
 
 
 def get_context_timeout():
