@@ -12,7 +12,7 @@ const MAX_ATTEMPTS = 5;
 // Sends a package of FASTQ lines
 const sendFASTQPackage = async (lines, context) => {
   try {
-    return await axios.post(`${FLASK_API_URL}/context/${context}/reads`, lines);
+    return await axios.post(`${FLASK_API_URL}context/${context}/reads`, lines);
   } catch (error) {
     throw error;
   }
@@ -189,7 +189,7 @@ const createContext = async (files) => {
 const closeContext = async (contextId, setBufferFill, setReadsProgressed) => {
   try {
     const { data } = await axios.post(
-      `${FLASK_API_URL}/context/${contextId}/close`,
+      `${FLASK_API_URL}context/${contextId}/close`,
       {
         context: contextId,
       },
