@@ -24,7 +24,7 @@ else:
 CONTEXT_TIMEOUT = None
 
 # API_BASE_URL = 'http://localhost:5000/' # developement
-API_BASE_URL = 'https://localhost/api/'  # production
+API_BASE_URL = 'https://traefik/api/'  # production
 
 
 def get_context_timeout():
@@ -103,7 +103,9 @@ def request_data_from_backend(context_id: UUID, pending_bytes: int):
         'pendingBytes': pending_bytes
     }
     try:
-        requests.post(url, headers=headers, data=json.dumps(payload))
+        # TODO: Trust self signed certificate (adjust in docker-compose) used by Traefik and
+        #  use here for https requests
+        requests.post(url, headers=headers, data=json.dumps(payload), verify=False)
     except requests.exceptions.RequestException as e:
         logger.error(f"Error requesting data: {e}")
 

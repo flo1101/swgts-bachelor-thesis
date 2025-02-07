@@ -21,44 +21,22 @@ RUN pip wheel --no-cache-dir --wheel-dir wheels \
 # We now have all built, so we can put everything together
 FROM python:$PYTHON_IMAGE_TAG
 
-# mod_wsgi from pip. We need apache2-dev to install the module automatically
-RUN apt-get update && \
-    apt-get --yes --no-install-recommends install apache2 apache2-dev nano curl iproute2 && \
-    pip install mod_wsgi && \
-    mod_wsgi-express install-module > /etc/apache2/mods-available/wsgi.load && \
-    a2enmod wsgi && \
-    apt-get --yes --purge autoremove apache2-dev && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists && \
-    a2dissite "*"
-
 # Copy artifacts from backend stage
 COPY --from=backend-builder wheels wheels
+COPY swgts-backend/swgts_api/requirements.txt .
 
-# Enable our site in apache
-ADD swgts-backend/swgts_api/docker/apache-site.conf /etc/apache2/sites-available/swgts.conf
-RUN a2enmod http2 && \
-    a2ensite swgts
 
 # Install our application, and its dependencies
+RUN pip install -r requirements.txt
 RUN pip install wheels/*.whl && \
     rm -rf wheels
 
 # Create important directories
 RUN mkdir -p /output /input /var/www/swgts
 
-# Add the wsgi application file
-ADD swgts-backend/swgts_api/docker/api.wsgi /var/www/swgts/api.wsgi
-
 # Ensure the rights are correctly set
-RUN chown -R www-data:www-data /var/www/swgts /output && \
-    chmod -R a-w /var/www/swgts
-
-# https://httpd.apache.org/docs/2.4/stopping.html#gracefulstop
-STOPSIGNAL SIGWINCH
-
-# Create important directories
-RUN mkdir -p /output /input
+RUN chown -R root:root /var/www/swgts /output
+RUN chmod -R u+w /var/www/swgts /output
 
 #add entrypoint
 ADD swgts-backend/swgts_api/docker/entrypoint.sh /entrypoint.sh

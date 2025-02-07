@@ -9,8 +9,8 @@ from .context_manager import *
 from .version import VERSION_INFORMATION
 
 app = Flask(__name__)
-CORS(app)
-socketio = SocketIO(app, cors_allowed_origins="*")
+CORS(app, supports_credentials=True)
+socketio = SocketIO(app, cors_allowed_origins="*", path='/api/socket.io')
 
 
 def request_data(requested_bytes, context_id):
@@ -173,8 +173,9 @@ def handle_data_upload(payload):
 
 
 # Http routes
-@app.route('/context/<uuid:context_id>/request-data', methods=['POST'])
+@app.route('/api/context/<uuid:context_id>/request-data', methods=['POST'])
 def post_request_data(context_id: UUID) -> Response:
+    app.logger.info('Requesting data from client.')
     """Called by filters to requests data from client once data in buffer has been processed"""
     if not context_exists(context_id):
         app.logger.warning(f'Tried to request data from non-existent context {context_id}.')
@@ -195,7 +196,7 @@ def post_request_data(context_id: UUID) -> Response:
     return make_response({'message': 'Data requested.'}, 200)
 
 
-@app.route('/server-status', methods=['GET'])
+@app.route('/api/server-status', methods=['GET'])
 def server_status() -> dict[str, Union[str, float]]:
     """Returns information about the server. Unfortunately, proper version discovery only works if the package is
     installed, which is true for the deployment Dockerfile. Reading the git revision would require additional
@@ -206,7 +207,7 @@ def server_status() -> dict[str, Union[str, float]]:
     return make_response(answer, 200)
 
 
-@app.route('/context/create', methods=['POST'])
+@app.route('/api/context/create', methods=['POST'])
 def context_create() -> dict[str, UUID]:
     json_body: dict[str, Any]
     try:
@@ -225,7 +226,8 @@ def context_create() -> dict[str, UUID]:
     return {'context': context}
 
 
-@app.route('/context/<uuid:context_id>/close', methods=['POST'])  # TODO: Avoid race condition (close before last reads)
+@app.route('/api/context/<uuid:context_id>/close',
+           methods=['POST'])  # TODO: Avoid race condition (close before last reads)
 def post_close_context(context_id: UUID) -> dict[str, Union[int, str, list[str]]]:
     if not context_exists(context_id):
         app.logger.warning(f'Tried to close non-existent context {context_id}.')
@@ -249,7 +251,7 @@ def post_close_context(context_id: UUID) -> dict[str, Union[int, str, list[str]]
         return make_response({'readsSaved': result[1], 'readsProcessed': result[0]}, 200)
 
 
-@app.route('/context/<uuid:context_id>/reads', methods=['POST'])
+@app.route('/api/context/<uuid:context_id>/reads', methods=['POST'])
 def post_context_reads(context_id: UUID) -> dict[str, Union[int, str]]:
     request_reception_time = time()
 
@@ -327,7 +329,6 @@ def post_context_reads(context_id: UUID) -> dict[str, Union[int, str]]:
     # Adjust pending bytes stat in redis
     current_pending = change_pending_bytes_count(context_id, effective_cumulated_chunk_size)
 
-    # TODO: Why do we already increase the processed reads count here? Shouldn't we wait until the reads are actually processed?
     increase_processed_read_count(context_id, len(chunk) - len(pairs_short_enough))
 
     # Enqueue valid read pairs for processing

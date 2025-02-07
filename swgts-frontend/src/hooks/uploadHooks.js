@@ -4,16 +4,15 @@ import { saveAs } from "file-saver";
 import { useHandleDialog } from "./dialogHooks";
 import useStore from "../store";
 import { useShallow } from "zustand/react/shallow";
-import { API_BASE_URL } from "./serverConfigHooks";
+import { FLASK_API_URL } from "./serverConfigHooks";
 
-const PACKAGE_SIZE = 100;
 const WORKER_THREADS = 4;
 const MAX_ATTEMPTS = 5;
 
 // Sends a package of FASTQ lines
 const sendFASTQPackage = async (lines, context) => {
   try {
-    return await axios.post(`${API_BASE_URL}/context/${context}/reads`, lines);
+    return await axios.post(`${FLASK_API_URL}/context/${context}/reads`, lines);
   } catch (error) {
     throw error;
   }
@@ -180,7 +179,7 @@ const startDownload = (files, savedReads, fqsAsText) => {
 
 // Creates a context and returns id of created context
 const createContext = async (files) => {
-  const { data } = await axios.post(`${API_BASE_URL}context/create`, {
+  const { data } = await axios.post(`${FLASK_API_URL}context/create`, {
     filenames: files.map((f) => f.name),
   });
   return data.context;
@@ -190,7 +189,7 @@ const createContext = async (files) => {
 const closeContext = async (contextId, setBufferFill, setReadsProgressed) => {
   try {
     const { data } = await axios.post(
-      `${API_BASE_URL}/context/${contextId}/close`,
+      `${FLASK_API_URL}/context/${contextId}/close`,
       {
         context: contextId,
       },

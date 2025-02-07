@@ -2,7 +2,6 @@ import { useEffect, useRef } from "react";
 import useStore from "../store";
 import { useShallow } from "zustand/react/shallow";
 import { io } from "socket.io-client";
-import { API_BASE_URL } from "./serverConfigHooks";
 import { useHandleDialog } from "./dialogHooks";
 import { readAndValidateFiles } from "./uploadHooks";
 
@@ -41,7 +40,12 @@ export const useHandleSocketUpload = (files) => {
     })),
   );
 
-  const socket = io(API_BASE_URL, { autoConnect: false });
+  const socket = io({
+    path: "/api/socket.io/",
+    autoConnect: false,
+    withCredentials: true,
+    // transports: ["websocket"],
+  });
 
   const { displayDialog } = useHandleDialog();
   // State that need to be accessed in socket event handlers need to be accessed via refs.
@@ -160,6 +164,15 @@ export const useHandleSocketUpload = (files) => {
       // setUploading(false);
     };
 
+    const onConnectionError = (err) => {
+      const { req, message, code, context } = err;
+      console.error(`Failed to connect to server:`);
+      console.error(`Code: ${code}`);
+      console.error(`Request: ${req}`);
+      console.error(`Message: ${message}`);
+      console.error(`Context: ${context}`);
+    };
+
     const onContextCreationError = (payload) => {
       const { message } = payload;
       console.error(`Failed to create context: ${message}`);
@@ -182,6 +195,7 @@ export const useHandleSocketUpload = (files) => {
     socket.on("contextCloseError", onContextCloseError);
     socket.on("contextCreationError", onContextCreationError);
     socket.on("dataUploadError", onDataUploadError);
+    socket.on("connect_error", onConnectionError);
 
     // TODO: clean up listeners when socket gets disconnected.
     //  when done here listeners get removed immedeatly

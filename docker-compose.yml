@@ -1,6 +1,35 @@
 version: "3"
 
 services:
+  traefik:
+    image: traefik:v2.11
+    command:
+      - --configFile=/traefik/conf.yml
+    ports:
+      - '443:443'
+      - '8080:8080'
+    volumes:
+      - ./traefik/config.yml:/traefik/conf.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+      - type: bind
+        source: ./tls/server.crt
+        target: /etc/ssl/certs/server.crt
+        read_only: true
+      - type: bind
+        source: ./tls/server.pem
+        target: /etc/ssl/private/server.pem
+        read_only: true
+    networks:
+      - traefik-frontend
+      - traefik-api
+      - traefik-filter
+      - outside-traefik
+    depends_on:
+      swgts-frontend:
+        condition: service_started
+      swgts-api:
+        condition: service_started
+
   swgts-api:
     build:
       context: ./
@@ -19,12 +48,25 @@ services:
       - traefik-api
       - api-redis
     labels:
+      # HTTPS router
       - traefik.enable=true
       - traefik.http.routers.swgts-api_https.rule=PathPrefix(`/api/`)
       - traefik.http.routers.swgts-api_https.tls=true
       - traefik.http.routers.swgts-api_https.entrypoints=https
       - traefik.docker.network=swgts-bachelor-thesis_traefik-api
-      - traefik.http.services.portwhine.loadbalancer.server.port=80
+      - traefik.http.services.swgts-api.loadbalancer.server.port=80
+      # Websocket router
+      - traefik.http.routers.swgts-api_ws.rule=PathPrefix(`/api/socket.io/`)
+      - traefik.http.routers.swgts-api_ws.entrypoints=https
+      - traefik.http.routers.swgts-api_ws.tls=true
+      - traefik.http.routers.swgts-api_ws.service=swgts-api
+      # Add websocket/ssl headers through middleware
+      - traefik.http.middlewares.websocket.headers.customRequestHeaders.Upgrade=websocket
+      - traefik.http.middlewares.websocket.headers.customRequestHeaders.Connection=Upgrade
+      - traefik.http.middlewares.sslheader.headers.customRequestHeaders.X-Forwarded-Proto=https
+      # Enable middleware for websocket router
+      - traefik.http.routers.swgts-api_ws.middlewares=websocket@docker
+      - traefik.http.routers.swgts-api_ws.middlewares=sslheader@docker
     restart: unless-stopped
     depends_on:
       redis:
@@ -74,6 +116,7 @@ services:
     ports:
       - "80"
     labels:
+      # HTTP router
       - traefik.enable=true
       - traefik.http.routers.swgts-frontend_https.rule=PathPrefix(`/`)
       - traefik.http.routers.swgts-frontend_https.tls=true
@@ -81,7 +124,19 @@ services:
       - traefik.http.middlewares.strip_frontend.stripprefix.prefixes=/frontend
       - traefik.http.routers.swgts-frontend_https.middlewares=strip_frontend@docker
       - traefik.docker.network=swgts-bachelor-thesis_traefik-frontend
-      - traefik.http.services.portugal.loadbalancer.server.port=80
+      - traefik.http.services.swgts-frontend.loadbalancer.server.port=80
+      # Websocket router
+      - traefik.http.routers.swgts-frontend_ws.rule=PathPrefix(`/socket.io/`)
+      - traefik.http.routers.swgts-frontend_ws.entrypoints=https
+      - traefik.http.routers.swgts-frontend_ws.tls=true
+      - traefik.http.routers.swgts-frontend_ws.service=swgts-frontend
+      # Add websocket/ssl headers through middleware
+      - traefik.http.middlewares.websocket.headers.customRequestHeaders.Upgrade=websocket
+      - traefik.http.middlewares.websocket.headers.customRequestHeaders.Connection=Upgrade
+      - traefik.http.middlewares.sslheader.headers.customRequestHeaders.X-Forwarded-Proto=https
+      # Enable middlewares for websocket router
+      - traefik.http.routers.swgts-frontend_ws.middlewares=websocket@docker
+      - traefik.http.routers.swgts-frontend_ws.middlewares=sslheader@docker
     networks:
       - traefik-frontend
     restart: unless-stopped
@@ -89,34 +144,6 @@ services:
       swgts-api:
         condition: service_started
 
-  traefik:
-    image: traefik:v2.11
-    command:
-      - --configFile=/traefik/conf.yml
-    ports:
-      - '443:443'
-      - '8080:8080'
-    volumes:
-      - ./traefik/config.yml:/traefik/conf.yml:ro
-      - /var/run/docker.sock:/var/run/docker.sock
-      - type: bind
-        source: ./tls/server.crt
-        target: /etc/ssl/certs/server.crt
-        read_only: true
-      - type: bind
-        source: ./tls/server.pem
-        target: /etc/ssl/private/server.pem
-        read_only: true
-    networks:
-      - traefik-frontend
-      - traefik-api
-      - traefik-filter
-      - outside-traefik
-    depends_on:
-      swgts-frontend:
-        condition: service_started
-      swgts-api:
-        condition: service_started
 volumes:
   cache:
     driver: local
