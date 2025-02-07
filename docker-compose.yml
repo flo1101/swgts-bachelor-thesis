@@ -140,6 +140,8 @@ services:
     networks:
       - traefik-frontend
     restart: unless-stopped
+    environment:
+      - REACT_APP_FLASK_API_URL=https://swgts.albi.hhu.de/api/
     depends_on:
       swgts-api:
         condition: service_started
