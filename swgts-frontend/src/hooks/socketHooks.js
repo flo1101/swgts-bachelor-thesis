@@ -126,8 +126,22 @@ export const useHandleSocketUpload = (files) => {
       createContext(files);
     };
 
-    const onDisconnect = (reason) => {
-      console.debug("Socket disconnected. Reason:", reason);
+    const onDisconnect = (reason, details) => {
+      console.debug("Socket disconnected");
+      // Logs for debugging connection issues:
+      // console.debug("Reason:", reason);
+      // console.debug("Message:", details.message);
+      // console.debug("Description:", details.description);
+      // console.debug("Context:", details.context);
+    };
+
+    const onConnectionError = (err) => {
+      const { req, message, code, context } = err;
+      console.error(`Failed to connect to server:`);
+      console.error(`Code: ${code}`);
+      console.error(`Request: ${req}`);
+      console.error(`Message: ${message}`);
+      console.error(`Context: ${context}`);
     };
 
     const onDataRequest = async (payload) => {
@@ -177,6 +191,7 @@ export const useHandleSocketUpload = (files) => {
 
     socket.on("connect", onConnect);
     socket.on("disconnect", onDisconnect);
+    socket.on("connectionError", onConnectionError);
     socket.on("dataRequest", onDataRequest);
     socket.on("contextClosed", onContextClosed);
     socket.on("contextCloseError", onContextCloseError);
