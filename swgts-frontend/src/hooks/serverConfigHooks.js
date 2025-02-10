@@ -8,7 +8,7 @@ import { useShallow } from "zustand/react/shallow";
  * Hooks return state from Zustand-store defined in store.js.
  */
 
-export const API_BASE_URL = process.env.REACT_APP_API_URL;
+export const API_BASE_URL = process.env.REACT_APP_FLASK_API_URL;
 
 /**
  * Verifies backend accessibility and fetches server configuration

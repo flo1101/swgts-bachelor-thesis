@@ -126,8 +126,8 @@ export const useHandleSocketUpload = (files) => {
       createContext(files);
     };
 
-    const onDisconnect = () => {
-      console.debug("Socket disconnected.");
+    const onDisconnect = (reason) => {
+      console.debug("Socket disconnected. Reason:", reason);
     };
 
     const onDataRequest = async (payload) => {
