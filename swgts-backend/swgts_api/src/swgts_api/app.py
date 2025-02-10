@@ -10,7 +10,7 @@ from .version import VERSION_INFORMATION
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
-socketio = SocketIO(app, cors_allowed_origins="*", path='/api/socket.io')
+socketio = SocketIO(app, cors_allowed_origins="*", max_http_buffer_size=10_000_000)
 
 
 def request_data(requested_bytes, context_id):
