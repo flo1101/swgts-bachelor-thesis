@@ -23,7 +23,6 @@ else:
 # This is the same timeout that is used in the api portion, the timeout value is exchanged via redis
 CONTEXT_TIMEOUT = None
 
-# API_BASE_URL = 'http://localhost:5000/' # developement
 API_BASE_URL = 'https://traefik/api/'  # production
 
 
@@ -98,6 +97,7 @@ def change_pending_bytes_count(context: UUID, diff: int) -> int:
 
 def request_data_from_backend(context_id: UUID, pending_bytes: int):
     url = f"{API_BASE_URL}context/{context_id}/request-data"
+    logger.info(f"({context_id}): Filter trigger data request")
     headers = {'Content-Type': 'application/json'}
     payload = {
         'pendingBytes': pending_bytes
@@ -105,7 +105,10 @@ def request_data_from_backend(context_id: UUID, pending_bytes: int):
     try:
         # TODO: Trust self signed certificate (adjust in docker-compose) used by Traefik and
         #  use here for https requests
-        requests.post(url, headers=headers, data=json.dumps(payload), verify=False)
+        response = requests.post(url, headers=headers, data=json.dumps(payload), verify=False)
+        print("URL:", url)
+        print("Status Code:", response.status_code)
+        print("Response Body:", response.text)
     except requests.exceptions.RequestException as e:
         logger.error(f"Error requesting data: {e}")
 
@@ -129,7 +132,6 @@ def spawn_worker(worker_id: int, is_shutting_down: Event):
             read_count = int(redis_server.brpop(f'work:{pending_job_id}')[1].decode())
             pair_count = int(redis_server.brpop(f'work:{pending_job_id}')[1].decode())
             start_time = float(redis_server.brpop(f'work:{pending_job_id}')[1].decode())
-            redis_server.get('')
 
             logger.info(
                 f'Worker {worker_id} reporting: I am working on a chunk for context {context_id} (ECCS: {effective_cumulative_chunk_size}) with {read_count} reads (in pairs of {pair_count})!')
@@ -167,9 +169,16 @@ def spawn_worker(worker_id: int, is_shutting_down: Event):
 
             # Request more data from client, after processing is finished
             logger.info(f'Worker {worker_id} requesting more data from backend.')
-            request_data_from_backend(context_id, now_pending)
+            request_size_factor = redis_server.get('config:request_size_factor')
+            buffer_size = redis_server.get('config:maximum_pending_bytes')
+            bytes_per_request = buffer_size // request_size_factor
+
+            if now_pending < bytes_per_request:
+                request_data_from_backend(context_id, bytes_per_request)
 
             pipeline = redis_server.pipeline()
+            # TODO: why store this client/context specific?
+            #  Isn't the processing speed same for all clients?
             pipeline.lpush(f'context:{context_id}:speed', (end_time - start_time) / effective_cumulative_chunk_size)
             pipeline.ltrim(f'context:{context_id}:speed', 0, 9)
             pipeline.execute()

@@ -60,7 +60,11 @@ def handle_create_context(payload):
 
     # To emit messages to a specific client/context, the context_id is used to create a client/context specific room
     join_room(str(context_id))
-    request_data(app.config['MAXIMUM_PENDING_BYTES'], context_id)
+
+    # Request data from client in multiple chunks, so we can multithread the filtering even for one client
+    request_size_factor, bytes_per_request = get_socket_request_info()
+    for i in range(request_size_factor):
+        request_data(bytes_per_request, context_id)
 
 
 @socketio.on("closeContext")
@@ -95,10 +99,8 @@ def handle_close_context(payload):
 @socketio.on("dataUpload")
 def handle_data_upload(payload):
     """Handle data uploaded from client"""
-    # TODO: Keep track of client latency for estimation when to request new data
     request_reception_time = time()
 
-    # TODO: Update readsFiltered
     chunk: list[list[list[str]]] = payload.get("data")
     bytes: int = payload.get("bytes")
     context_id: UUID = payload.get("contextId")
@@ -170,6 +172,8 @@ def handle_data_upload(payload):
     # Enqueue valid read pairs for processing
     if len(pairs_short_enough) > 0:
         enqueue_chunks(pairs_short_enough, context_id, effective_cumulated_chunk_size, request_reception_time)
+
+    # TODO: save client latency in redis queue here if needed
 
 
 # Http routes
@@ -376,6 +380,12 @@ if not redis_ping():
 
 # Share the context timeout setting with the state server
 share_timeout(app.config['CONTEXT_TIMEOUT'])
+
+# Share the maximum pending bytes setting with the state server
+share_maximum_pending_bytes(app.config['MAXIMUM_PENDING_BYTES'])
+
+# Share request size factor
+share_request_size_factor(app.config['REQUEST_SIZE_FACTOR'])
 
 # Record the server launch time
 SERVER_LAUNCH_TIME = time()

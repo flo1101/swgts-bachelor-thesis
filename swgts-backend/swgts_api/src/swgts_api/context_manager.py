@@ -160,5 +160,28 @@ def share_timeout(timeout: int) -> None:
         lo.info('Wrote timeout config value into redis')
 
 
+def share_maximum_pending_bytes(maximum_pending_bytes: int) -> None:
+    if not redis_server.set('config:maximum_pending_bytes', maximum_pending_bytes):
+        lo.error('Maximum pending bytes config value cannot be set ...')
+        sys.exit(-2)
+    else:
+        lo.info('Wrote maximum pending bytes config value into redis')
+
+
+def share_request_size_factor(request_size_factor: int) -> None:
+    if not redis_server.set('config:request_size_factor', request_size_factor):
+        lo.error('Request size factor config value cannot be set ...')
+        sys.exit(-2)
+    else:
+        lo.info('Wrote request size factor config value into redis')
+
+
 def increment_processed_bases(bases: int) -> None:
     redis_server.incrby('stats:bases', bases)
+
+
+def get_socket_request_info() -> Tuple[int, int]:
+    request_size_factor = redis_server.get('config:request_size_factor')
+    buffer_size = redis_server.get('config:maximum_pending_bytes')
+    lo.info(f'AA: {request_size_factor=}, {buffer_size=}')
+    return int(request_size_factor), int(buffer_size) // int(request_size_factor)
