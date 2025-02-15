@@ -168,11 +168,11 @@ def spawn_worker(worker_id: int, is_shutting_down: Event):
             end_time = time()
 
             # Request more data from client, after processing is finished
-            logger.info(f'Worker {worker_id} requesting more data from backend.')
             request_size_factor = redis_server.get('config:request_size_factor')
             buffer_size = redis_server.get('config:maximum_pending_bytes')
             bytes_per_request = buffer_size // request_size_factor
 
+            logger.info(f'Worker {worker_id} requesting {bytes_per_request} more bytes for context {context_id}.')
             request_data_from_backend(context_id, bytes_per_request)
 
             pipeline = redis_server.pipeline()
