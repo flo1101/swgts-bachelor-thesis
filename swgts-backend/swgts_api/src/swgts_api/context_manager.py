@@ -183,5 +183,4 @@ def increment_processed_bases(bases: int) -> None:
 def get_socket_request_info() -> Tuple[int, int]:
     request_size_factor = redis_server.get('config:request_size_factor')
     buffer_size = redis_server.get('config:maximum_pending_bytes')
-    lo.info(f'AA: {request_size_factor=}, {buffer_size=}')
     return int(request_size_factor), int(buffer_size) // int(request_size_factor)

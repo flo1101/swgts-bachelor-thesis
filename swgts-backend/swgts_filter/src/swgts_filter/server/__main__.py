@@ -163,7 +163,7 @@ def spawn_worker(worker_id: int, is_shutting_down: Event):
             mark_for_saving(context_id, to_save, len(chunk))
             logger.info(f'Worker {worker_id} reporting: I will now update the pending byte count')
             redis_server.incrby('stats:bases', effective_cumulative_chunk_size)
-            now_pending = change_pending_bytes_count(context_id, -effective_cumulative_chunk_size)
+            change_pending_bytes_count(context_id, -effective_cumulative_chunk_size)
             logger.info(f'Worker {worker_id} reporting: Done!')
             end_time = time()
 
@@ -173,8 +173,7 @@ def spawn_worker(worker_id: int, is_shutting_down: Event):
             buffer_size = redis_server.get('config:maximum_pending_bytes')
             bytes_per_request = buffer_size // request_size_factor
 
-            if now_pending < bytes_per_request:
-                request_data_from_backend(context_id, bytes_per_request)
+            request_data_from_backend(context_id, bytes_per_request)
 
             pipeline = redis_server.pipeline()
             # TODO: why store this client/context specific?
