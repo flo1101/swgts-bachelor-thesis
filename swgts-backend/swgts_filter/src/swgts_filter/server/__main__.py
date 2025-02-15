@@ -41,6 +41,36 @@ def get_context_timeout():
     return CONTEXT_TIMEOUT
 
 
+def get_buffer_size():
+    debug_current = time()
+    global BUFFER_SIZE
+    while BUFFER_SIZE is None:
+        logger.info(f'Fetching max buffer size at time {debug_current}')
+        buffer_size = redis_server.get('config:maximum_pending_bytes')
+        if buffer_size is None:  # Not yet set, should rarely happen
+            logger.info('config:maximum_pending_bytes is not yet set, maybe the api is lagging behind ...')
+            sleep(5)
+        else:
+            BUFFER_SIZE = int(buffer_size)
+        logger.info(f'Done at time {debug_current}')
+    return BUFFER_SIZE
+
+
+def get_request_size_factor():
+    debug_current = time()
+    global FACTOR
+    while FACTOR is None:
+        logger.info(f'Fetching request size factor at time {debug_current}')
+        factor = redis_server.get('config:request_size_factor')
+        if factor is None:  # Not yet set, should rarely happen
+            logger.info('config:request_size_factor is not yet set, maybe the api is lagging behind ...')
+            sleep(5)
+        else:
+            FACTOR = int(factor)
+        logger.info(f'Done at time {debug_current}')
+    return FACTOR
+
+
 logging.basicConfig(filename=LOG_FILE, level='INFO',
                     format='%(asctime)s:%(levelname)s:%(name)s:%(message)s')
 
@@ -168,8 +198,8 @@ def spawn_worker(worker_id: int, is_shutting_down: Event):
             end_time = time()
 
             # Request more data from client, after processing is finished
-            request_size_factor = redis_server.get('config:request_size_factor')
-            buffer_size = redis_server.get('config:maximum_pending_bytes')
+            request_size_factor = get_request_size_factor()
+            buffer_size = get_buffer_size()
             bytes_per_request = buffer_size // request_size_factor
 
             logger.info(f'Worker {worker_id} requesting {bytes_per_request} more bytes for context {context_id}.')
