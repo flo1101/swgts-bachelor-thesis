@@ -60,7 +60,11 @@ def handle_create_context(payload):
 
     # To emit messages to a specific client/context, the context_id is used to create a client/context specific room
     join_room(str(context_id))
-    request_data(app.config['MAXIMUM_PENDING_BYTES'], context_id)
+
+    # Request data from client in multiple chunks, so we can multithread the filtering even for one client
+    request_size_factor, bytes_per_request = get_socket_request_info()
+    for i in range(request_size_factor):
+        request_data(bytes_per_request, context_id)
 
 
 @socketio.on("closeContext")
@@ -173,7 +177,7 @@ def handle_data_upload(payload):
 
 
 # Http routes
-@app.route('/api/context/<uuid:context_id>/request-data', methods=['POST'])
+@app.route('/context/<uuid:context_id>/request-data', methods=['POST'])
 def post_request_data(context_id: UUID) -> Response:
     app.logger.info('Requesting data from client.')
     """Called by filters to requests data from client once data in buffer has been processed"""
@@ -186,7 +190,7 @@ def post_request_data(context_id: UUID) -> Response:
         json_body = request.get_json()
         if 'bytes_to_request' not in json_body:
             return make_response({'message': 'bytes_to_request missing in request.'}, 400)
-        if not isinstance(json_body['pendingBytes'], int):
+        if not isinstance(json_body['bytes_to_request'], int):
             return make_response({'message': 'bytes_to_request is not an integer.'}, 400)
     except TypeError:
         return make_response({'message': 'expected json body.'}, 400)
@@ -375,6 +379,12 @@ if not redis_ping():
 
 # Share the context timeout setting with the state server
 share_timeout(app.config['CONTEXT_TIMEOUT'])
+
+# Share the maximum pending bytes setting with the state server
+share_maximum_pending_bytes(app.config['MAXIMUM_PENDING_BYTES'])
+
+# Share request size factor
+share_request_size_factor(app.config['REQUEST_SIZE_FACTOR'])
 
 # Record the server launch time
 SERVER_LAUNCH_TIME = time()
