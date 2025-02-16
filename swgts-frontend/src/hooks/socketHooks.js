@@ -4,8 +4,10 @@ import { useShallow } from "zustand/react/shallow";
 import { io } from "socket.io-client";
 import { useHandleDialog } from "./dialogHooks";
 import { readAndValidateFiles } from "./uploadHooks";
+import { gzip } from "pako";
+import { saveAs } from "file-saver";
 
-export const useHandleSocketUpload = (files) => {
+export const useHandleSocketUpload = (files, downloadFiles) => {
   const {
     uploading,
     setUploading,
@@ -98,6 +100,23 @@ export const useHandleSocketUpload = (files) => {
     return { data, bytesSend };
   };
 
+  const startDownload = (files, savedReads, fqsAsText) => {
+    console.debug("SAVED READS:", savedReads);
+    for (let i = 0; i < files.length; i++) {
+      let fileText = fqsAsText[i]
+        .filter((_, index) => savedReads.includes(fqsAsText[0][index * 4]))
+        .join("\n");
+
+      const blob =
+        files[i].type === "application/gzip"
+          ? new Blob([gzip(fileText)], { type: "application/gzip" })
+          : new Blob([fileText], { type: "text/plain" });
+
+      console.debug("Saving file:", files[i].name);
+      saveAs(blob, `filtered.${files[i].name}`);
+    }
+  };
+
   const uploadData = (data, bytes, contextId) => {
     console.debug(`(${contextId}): Uploading ${bytes} bytes to server.`);
     socket.emit("dataUpload", {
@@ -158,7 +177,8 @@ export const useHandleSocketUpload = (files) => {
       console.debug(
         `(${contextId}): Context closed. ${processedReads} reads processed.`,
       );
-      // TODO: download filtered reads
+      // Download files
+      if (downloadFiles) startDownload(files, savedReads, linesRef.current);
       setReadsProgressed(processedReads);
       socket.disconnect();
       // setUploading(false);

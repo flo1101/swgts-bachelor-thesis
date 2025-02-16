@@ -19,7 +19,7 @@ const UploadView = ({ bufferSize }) => {
   const { startUpload, uploading, readsTotal, readsProgressed, bufferFill } =
     useHandleUpload(files, downloadFiles, bufferSize);
 
-  const { startSocketUpload } = useHandleSocketUpload(files);
+  const { startSocketUpload } = useHandleSocketUpload(files, downloadFiles);
 
   const addFiles = (files) => {
     if (

@@ -81,6 +81,7 @@ def handle_close_context(payload):
     # We test if the context still has pending bytes and only delete it if no more bytes are pending (everything is filtered)
     pending_bytes: int = get_pending_bytes_count(context_id)
     if pending_bytes != 0:
+        app.logger.info(f"({context_id}): Can not close context. Still pending bytes.")
         socketio.emit("contextCloseError", {'message': 'There are still reads pending, try again later!'},
                       to=str(context_id))
         return

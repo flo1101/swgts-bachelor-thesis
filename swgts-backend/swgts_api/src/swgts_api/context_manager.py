@@ -110,7 +110,7 @@ def get_queue_speed(context: UUID) -> float:
 def close_context(context: UUID, hands_off: bool) -> Tuple[int, list[str]]:
     # FIXME sanity check redis response
     # FIXME redis-server-side CONTEXT_TIMEOUT may happen while writing
-    lo.info(f'Closing Context {context} ...')
+    lo.info(f'({context}): Closing Context ...')
     starting_time = time()
 
     context_output_folder = path.join(CONFIG['UPLOAD_DIRECTORY'], str(context))
@@ -142,7 +142,7 @@ def close_context(context: UUID, hands_off: bool) -> Tuple[int, list[str]]:
     redis_server.delete(f'context:{context}:speed')
 
     finishing_time = time()
-    lo.info(f'Closed Context {context} in {finishing_time - starting_time} seconds')
+    lo.info(f'({context}): Closed Context in {finishing_time - starting_time} seconds')
 
     return processed_reads, saved_reads_ids
 
