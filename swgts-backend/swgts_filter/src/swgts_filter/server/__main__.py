@@ -143,6 +143,40 @@ def request_data_from_backend(context_id: UUID, pending_bytes: int):
         logger.error(f"Error requesting data: {e}")
 
 
+def get_buffer_size():
+    debug_current = time()
+    global BUFFER_SIZE
+    while BUFFER_SIZE is None:
+        logger.info(f'Fetching max buffer size at time {debug_current}')
+        buffer_size = redis_server.get('config:maximum_pending_bytes')
+        if buffer_size is None:  # Not yet set, should rarely happen
+            logger.info('config:maximum_pending_bytes is not yet set, maybe the api is lagging behind ...')
+            sleep(5)
+        else:
+            BUFFER_SIZE = int(buffer_size)
+        logger.info(f'Done at time {debug_current}')
+    return BUFFER_SIZE
+
+
+def get_request_size_factor():
+    debug_current = time()
+    global FACTOR
+
+    logger.info(f'Get request size factor:')
+    while FACTOR is None:
+        logger.info(f'Fetching request size factor at time {debug_current}')
+        factor = redis_server.get('config:request_size_factor')
+        if factor is None:  # Not yet set, should rarely happen
+            logger.info('config:request_size_factor is not yet set, maybe the api is lagging behind ...')
+            sleep(5)
+        else:
+            FACTOR = int(factor)
+        logger.info(f'Done at time {debug_current}')
+
+    logger.info(f'Return request size factor:{FACTOR}', )
+    return FACTOR
+
+
 def spawn_worker(worker_id: int, is_shutting_down: Event):
     logger.info(f'Worker spawned with id {worker_id}')
     while not is_shutting_down.is_set():
