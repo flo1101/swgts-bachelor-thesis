@@ -62,7 +62,6 @@ def get_request_size_factor():
     debug_current = time()
     global REQUEST_SIZE_FACTOR
 
-    logger.info(f'Get request size factor:')
     while REQUEST_SIZE_FACTOR is None:
         logger.info(f'Fetching request size factor at time {debug_current}')
         factor = redis_server.get('config:request_size_factor')
@@ -73,7 +72,6 @@ def get_request_size_factor():
             REQUEST_SIZE_FACTOR = int(factor)
         logger.info(f'Done at time {debug_current}')
 
-    logger.info(f'Return request size factor:{REQUEST_SIZE_FACTOR}', )
     return REQUEST_SIZE_FACTOR
 
 
@@ -131,20 +129,16 @@ def change_pending_bytes_count(context: UUID, diff: int) -> int:
     return int(now_pending)
 
 
-def request_data_from_backend(context_id: UUID, pending_bytes: int):
+def request_data_from_backend(context_id: UUID, bytes_to_request: int):
     url = f"{API_BASE_URL}context/{context_id}/request-data"
-    logger.info(f"({context_id}): Filter trigger data request")
     headers = {'Content-Type': 'application/json'}
     payload = {
-        'pendingBytes': pending_bytes
+        'bytes_to_request': bytes_to_request
     }
     try:
         # TODO: Trust self signed certificate (adjust in docker-compose) used by Traefik and
         #  use here for https requests
-        response = requests.post(url, headers=headers, data=json.dumps(payload), verify=False)
-        print("URL:", url)
-        print("Status Code:", response.status_code)
-        print("Response Body:", response.text)
+        requests.post(url, headers=headers, data=json.dumps(payload), verify=False)
     except requests.exceptions.RequestException as e:
         logger.error(f"Error requesting data: {e}")
 
