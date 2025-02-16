@@ -190,7 +190,7 @@ def post_request_data(context_id: UUID) -> Response:
         json_body = request.get_json()
         if 'bytes_to_request' not in json_body:
             return make_response({'message': 'bytes_to_request missing in request.'}, 400)
-        if not isinstance(json_body['pendingBytes'], int):
+        if not isinstance(json_body['bytes_to_request'], int):
             return make_response({'message': 'bytes_to_request is not an integer.'}, 400)
     except TypeError:
         return make_response({'message': 'expected json body.'}, 400)
