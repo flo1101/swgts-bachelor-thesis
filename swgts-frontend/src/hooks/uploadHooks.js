@@ -6,7 +6,6 @@ import useStore from "../store";
 import { useShallow } from "zustand/react/shallow";
 import { API_BASE_URL } from "./serverConfigHooks";
 
-const PACKAGE_SIZE = 100;
 const WORKER_THREADS = 4;
 const MAX_ATTEMPTS = 5;
 
