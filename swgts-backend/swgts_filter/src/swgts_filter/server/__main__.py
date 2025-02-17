@@ -22,8 +22,7 @@ else:
 
 # This is the same timeout that is used in the api portion, the timeout value is exchanged via redis
 CONTEXT_TIMEOUT = None
-MAXIMUM_PENDING_BYTES = None
-REQUEST_SIZE_FACTOR = None
+REQUEST_SIZE = None
 
 # For developement use docker bridge interface for swgts-filter service to send http request to locally running backend
 # TODO: for production adjust this to run in same docker network
@@ -45,36 +44,21 @@ def get_context_timeout():
     return CONTEXT_TIMEOUT
 
 
-def get_max_pending_bytes():
+def get_request_size():
     debug_current = time()
-    global MAXIMUM_PENDING_BYTES
-    while MAXIMUM_PENDING_BYTES is None:
-        logger.info(f'Fetching max buffer size at time {debug_current}')
-        max_pending = redis_server.get('config:maximum_pending_bytes')
-        if max_pending is None:  # Not yet set, should rarely happen
-            logger.info('config:maximum_pending_bytes is not yet set, maybe the api is lagging behind ...')
+    global REQUEST_SIZE
+
+    while REQUEST_SIZE is None:
+        logger.info(f'Fetching request size at time {debug_current}')
+        request_size = redis_server.get('config:request_size')
+        if request_size is None:  # Not yet set, should rarely happen
+            logger.info('config:request_size is not yet set, maybe the api is lagging behind ...')
             sleep(5)
         else:
-            MAXIMUM_PENDING_BYTES = int(max_pending)
-        logger.info(f'Done at time {debug_current}')
-    return MAXIMUM_PENDING_BYTES
-
-
-def get_request_size_factor():
-    debug_current = time()
-    global REQUEST_SIZE_FACTOR
-
-    while REQUEST_SIZE_FACTOR is None:
-        logger.info(f'Fetching request size factor at time {debug_current}')
-        factor = redis_server.get('config:request_size_factor')
-        if factor is None:  # Not yet set, should rarely happen
-            logger.info('config:request_size_factor is not yet set, maybe the api is lagging behind ...')
-            sleep(5)
-        else:
-            REQUEST_SIZE_FACTOR = int(factor)
+            REQUEST_SIZE = int(request_size)
         logger.info(f'Done at time {debug_current}')
 
-    return REQUEST_SIZE_FACTOR
+    return REQUEST_SIZE
 
 
 logging.basicConfig(filename=LOG_FILE, level='INFO',
@@ -199,11 +183,9 @@ def spawn_worker(worker_id: int, is_shutting_down: Event):
             end_time = time()
 
             # Request more data from client, after processing is finished
-            request_size_factor = get_request_size_factor()
-            max_pending_bytes = get_max_pending_bytes()
-            bytes_to_request = max_pending_bytes // request_size_factor
-            logger.info(f'Worker {worker_id} requesting more data from backend.')
-            request_data_from_backend(context_id, bytes_to_request)
+            size = get_request_size()
+            logger.info(f'Worker {worker_id} requesting {size} bytes data for context {context_id}.')
+            request_data_from_backend(context_id, size)
 
             pipeline = redis_server.pipeline()
             pipeline.lpush(f'context:{context_id}:speed', (end_time - start_time) / effective_cumulative_chunk_size)
