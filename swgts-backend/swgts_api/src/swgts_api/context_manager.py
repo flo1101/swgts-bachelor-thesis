@@ -152,35 +152,19 @@ def get_saved_read_count(context: UUID) -> int:
     return int(redis_server.scard(f'context:{context}:pair:0:reads'))
 
 
-def share_timeout(timeout: int) -> None:
-    if not redis_server.set('config:expiry', timeout):
-        lo.error('Expiry config value cannot be set ...')
-        sys.exit(-2)
-    else:
-        lo.info('Wrote timeout config value into redis')
-
-
-def share_maximum_pending_bytes(maximum_pending_bytes: int) -> None:
-    if not redis_server.set('config:maximum_pending_bytes', maximum_pending_bytes):
-        lo.error('Maximum pending bytes config value cannot be set ...')
-        sys.exit(-2)
-    else:
-        lo.info('Wrote maximum pending bytes config value into redis')
-
-
-def share_request_size_factor(request_size_factor: int) -> None:
-    if not redis_server.set('config:request_size_factor', request_size_factor):
-        lo.error('Request size factor config value cannot be set ...')
-        sys.exit(-2)
-    else:
-        lo.info('Wrote request size factor config value into redis')
+def get_socket_request_info() -> Tuple[int, int]:
+    request_size_factor = redis_server.get('config:request_size_factor')
+    request_size = redis_server.get('config:request_size')
+    return int(request_size_factor), int(request_size)
 
 
 def increment_processed_bases(bases: int) -> None:
     redis_server.incrby('stats:bases', bases)
 
 
-def get_socket_request_info() -> Tuple[int, int]:
-    request_size_factor = redis_server.get('config:request_size_factor')
-    buffer_size = redis_server.get('config:maximum_pending_bytes')
-    return int(request_size_factor), int(buffer_size) // int(request_size_factor)
+def write_config_value_to_redis(name: str, key: str, value):
+    if not redis_server.set(f'config:{key}', value):
+        lo.error(f'Error writing {name} config value to redis.')
+        sys.exit(-2)
+    else:
+        lo.info(f'Wrote {name} into redis')

@@ -13,10 +13,10 @@ CORS(app, supports_credentials=True)
 socketio = SocketIO(app, cors_allowed_origins="*", path='/api/socket.io', max_http_buffer_size=10_000_000)
 
 
-def request_data(requested_bytes, context_id):
+def request_data(request_size, context_id):
     """Request data from client"""
-    app.logger.info(f"({context_id}): Requesting {requested_bytes} bytes from client.")
-    socketio.emit("dataRequest", {"bytes": requested_bytes, "contextId": str(context_id),
+    app.logger.info(f"({context_id}): Requesting {request_size} bytes from client.")
+    socketio.emit("dataRequest", {"bytes": request_size, "contextId": str(context_id),
                                   "bufferFill": get_pending_bytes_count(context_id),
                                   "processedReads": get_processed_read_count(context_id)}, to=str(context_id))
 
@@ -62,9 +62,9 @@ def handle_create_context(payload):
     join_room(str(context_id))
 
     # Request data from client in multiple chunks, so we can multithread the filtering even for one client
-    request_size_factor, bytes_per_request = get_socket_request_info()
+    request_size_factor, request_size = get_socket_request_info()
     for i in range(request_size_factor):
-        request_data(bytes_per_request, context_id)
+        request_data(request_size, context_id)
 
 
 @socketio.on("closeContext")
@@ -378,14 +378,12 @@ if not redis_ping():
     app.logger.fatal('Could not connect to stateful backend. Goodbye.')
     sys.exit(1)
 
-# Share the context timeout setting with the state server
-share_timeout(app.config['CONTEXT_TIMEOUT'])
-
-# Share the maximum pending bytes setting with the state server
-share_maximum_pending_bytes(app.config['MAXIMUM_PENDING_BYTES'])
-
-# Share request size factor
-share_request_size_factor(app.config['REQUEST_SIZE_FACTOR'])
+# Writes config values into redis to share with other services
+write_config_value_to_redis("CONTEXT_TIMEOUT", "expiry", app.config['CONTEXT_TIMEOUT'])
+write_config_value_to_redis("MAXIMUM_PENDING_BYTES", "maximum_pending_bytes", app.config['MAXIMUM_PENDING_BYTES'])
+write_config_value_to_redis("REQUEST_SIZE_FACTOR", "request_size_factor", app.config['REQUEST_SIZE_FACTOR'])
+write_config_value_to_redis("REQUEST_SIZE", "request_size",
+                            app.config['MAXIMUM_PENDING_BYTES'] // app.config['REQUEST_SIZE_FACTOR'])
 
 # Record the server launch time
 SERVER_LAUNCH_TIME = time()
