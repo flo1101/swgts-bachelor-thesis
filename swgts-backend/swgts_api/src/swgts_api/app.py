@@ -13,10 +13,10 @@ CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*", max_http_buffer_size=10_000_000)
 
 
-def request_data(requested_bytes, context_id):
+def request_data(request_size, context_id):
     """Request data from client"""
-    app.logger.info(f"({context_id}): Requesting {requested_bytes} bytes from client.")
-    socketio.emit("dataRequest", {"bytes": requested_bytes, "contextId": str(context_id),
+    app.logger.info(f"({context_id}): Requesting {request_size} bytes from client.")
+    socketio.emit("dataRequest", {"bytes": request_size, "contextId": str(context_id),
                                   "bufferFill": get_pending_bytes_count(context_id),
                                   "processedReads": get_processed_read_count(context_id)}, to=str(context_id))
 
@@ -62,9 +62,9 @@ def handle_create_context(payload):
     join_room(str(context_id))
 
     # Request data from client in multiple chunks, so we can multithread the filtering even for one client
-    request_size_factor, bytes_per_request = get_socket_request_info()
+    request_size_factor, request_size = get_socket_request_info()
     for i in range(request_size_factor):
-        request_data(bytes_per_request, context_id)
+        request_data(request_size, context_id)
 
 
 @socketio.on("closeContext")
@@ -93,17 +93,15 @@ def handle_close_context(payload):
     else:
         socketio.emit("contextClosed", {'contextId': context_id, 'savedReads': result[1], 'processedReads': result[0]},
                       to=str(context_id))
-        app.logger.info(f'({context_id}): Closed context, saved {len(result[1])} of {result[0]} reads.')
+        app.logger.info(f'({context_id}): Closed context, saved {len(result[1])} of {result[0]}.')
         return
 
 
 @socketio.on("dataUpload")
 def handle_data_upload(payload):
     """Handle data uploaded from client"""
-    # TODO: Keep track of client latency for estimation when to request new data
     request_reception_time = time()
 
-    # TODO: Update readsFiltered
     chunk: list[list[list[str]]] = payload.get("data")
     bytes: int = payload.get("bytes")
     context_id: UUID = payload.get("contextId")
@@ -152,14 +150,16 @@ def handle_data_upload(payload):
             pairs_short_enough.append(filtered_pair)
 
     current_pending: int = get_pending_bytes_count(context_id)
+    request_size_factor, request_size = get_socket_request_info()
     excess: int = current_pending + effective_cumulated_chunk_size - app.config['MAXIMUM_PENDING_BYTES']
 
-    if effective_cumulated_chunk_size > app.config['MAXIMUM_PENDING_BYTES']:
-        app.logger.info(f"({context_id}): You sent a chunk that is larger than the configured buffer size.")
+    if effective_cumulated_chunk_size > request_size:
+        app.logger.info(f"({context_id}): You sent more data than requested.")
         app.logger.info(
-            f"Effective cumulated chunk size: {effective_cumulated_chunk_size}. Buffer size: {app.config['MAXIMUM_PENDING_BYTES']}.")
+            f"Effective cumulated chunk size: {effective_cumulated_chunk_size}. Request size: {request_size}.")
 
-        socketio.emit("dataUploadError", {'message': 'You sent a chunk that is larger than the configured buffer size'},
+        socketio.emit("dataUploadError",
+                      {'message': 'You sent more bytes than requested. Sent data will be discarded.'},
                       to=str(context_id))
         return
 
@@ -332,7 +332,6 @@ def post_context_reads(context_id: UUID) -> dict[str, Union[int, str]]:
     # Adjust pending bytes stat in redis
     current_pending = change_pending_bytes_count(context_id, effective_cumulated_chunk_size)
 
-    # TODO: Why do we already increase the processed reads count here? Shouldn't we wait until the reads are actually processed?
     increase_processed_read_count(context_id, len(chunk) - len(pairs_short_enough))
 
     # Enqueue valid read pairs for processing
@@ -378,14 +377,23 @@ if not redis_ping():
     app.logger.fatal('Could not connect to stateful backend. Goodbye.')
     sys.exit(1)
 
-# Share the context timeout setting with the state server
-share_timeout(app.config['CONTEXT_TIMEOUT'])
+# Writes config values into redis to share with other services
+write_config_value_to_redis("CONTEXT_TIMEOUT", "expiry", app.config['CONTEXT_TIMEOUT'])
+write_config_value_to_redis("MAXIMUM_PENDING_BYTES", "maximum_pending_bytes", app.config['MAXIMUM_PENDING_BYTES'])
+write_config_value_to_redis("REQUEST_SIZE_FACTOR", "request_size_factor", app.config['REQUEST_SIZE_FACTOR'])
+write_config_value_to_redis("REQUEST_SIZE", "request_size",
+                            app.config['MAXIMUM_PENDING_BYTES'] // app.config['REQUEST_SIZE_FACTOR'])
 
-# Share the maximum pending bytes setting with the state server
-share_maximum_pending_bytes(app.config['MAXIMUM_PENDING_BYTES'])
-
-# Share request size factor
-share_request_size_factor(app.config['REQUEST_SIZE_FACTOR'])
+# # Share the context timeout setting with the state server
+# share_timeout(app.config['CONTEXT_TIMEOUT'])
+#
+# # Share the maximum pending bytes setting with the state server
+# share_maximum_pending_bytes(app.config['MAXIMUM_PENDING_BYTES'])
+#
+# write_config_value_to_redis()
+#
+# # Share request size factor
+# share_request_size_factor(app.config['REQUEST_SIZE_FACTOR'])
 
 # Record the server launch time
 SERVER_LAUNCH_TIME = time()
