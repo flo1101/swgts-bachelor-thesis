@@ -12,7 +12,10 @@ const ProgressBar = ({ total, progress, labels = [], className = "" }) => {
         <span>{`${Math.round(fillPercentage * 10) / 10}%`}</span>
       </div>
       <div className="total">
-        <div className={"fill"} style={{ width: `${fillPercentage}%` }}></div>
+        <div
+          className={`${className}-fill`}
+          style={{ width: `${fillPercentage}%` }}
+        ></div>
       </div>
     </div>
   );

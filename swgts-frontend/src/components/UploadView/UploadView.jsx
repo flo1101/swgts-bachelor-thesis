@@ -63,14 +63,14 @@ const UploadView = ({ bufferSize }) => {
             <SelectedFiles files={files} deleteFile={deleteFile} />
             <div className="upload-button-checkbox">
               <Button
-                className={"start-upload-button"}
+                className={"start-upload-button start-socket-upload-button"}
                 disabled={disableUpload}
                 label={"Start upload"}
                 disabledLabel={"No files selected"}
                 onClick={startUpload}
               />
               <Button
-                className={"start-upload-button"}
+                className={"start-upload-button start-http-upload-button"}
                 label={"Start socket upload"}
                 disabled={disableUpload}
                 disabledLabel={"No files selected"}
