@@ -157,12 +157,12 @@ def write_config_value_to_redis(name: str, key: str, value):
         lo.error(f'Error writing {name} config value to redis.')
         sys.exit(-2)
     else:
-        lo.info(f'Wrote {name} into redis')
+        lo.info(f'Wrote {name} into redis: {value}')
 
 
 def get_socket_request_info() -> Tuple[int, int]:
     request_size_factor = redis_server.get('config:request_size_factor')
-    request_size = redis_server.get('config:maximum_pending_bytes')
+    request_size = redis_server.get('config:request_size')
     return int(request_size_factor), int(request_size)
 
 
