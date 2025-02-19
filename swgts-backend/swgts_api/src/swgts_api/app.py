@@ -384,17 +384,6 @@ write_config_value_to_redis("REQUEST_SIZE_FACTOR", "request_size_factor", app.co
 write_config_value_to_redis("REQUEST_SIZE", "request_size",
                             app.config['MAXIMUM_PENDING_BYTES'] // app.config['REQUEST_SIZE_FACTOR'])
 
-# # Share the context timeout setting with the state server
-# share_timeout(app.config['CONTEXT_TIMEOUT'])
-#
-# # Share the maximum pending bytes setting with the state server
-# share_maximum_pending_bytes(app.config['MAXIMUM_PENDING_BYTES'])
-#
-# write_config_value_to_redis()
-#
-# # Share request size factor
-# share_request_size_factor(app.config['REQUEST_SIZE_FACTOR'])
-
 # Record the server launch time
 SERVER_LAUNCH_TIME = time()
 
