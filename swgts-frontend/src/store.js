@@ -5,8 +5,8 @@ const useStore = create((set) => ({
   serverConfig: null,
   setServerConfig: (serverConfig) => set({ serverConfig }),
   // Handle upload
-  uploading: false,
-  setUploading: (uploading) => set({ uploading }),
+  uploadStatus: null, // Values: null , 'UPLOADING', 'SUCCESS', 'ERROR'
+  setUploadStatus: (uploadStatus) => set({ uploadStatus }),
   readsTotal: 0,
   setReadsTotal: (readsTotal) => set({ readsTotal }),
   readsProgressed: 0,

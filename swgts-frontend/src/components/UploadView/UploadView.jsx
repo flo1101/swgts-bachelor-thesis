@@ -16,10 +16,18 @@ const UploadView = ({ bufferSize }) => {
   const [downloadFiles, setDownloadFiles] = useState(false);
   const disableUpload = files.length <= 0;
 
-  const { startUpload, uploading, readsTotal, readsProgressed, bufferFill } =
+  const { startUpload, uploadStatus, readsTotal, readsProgressed, bufferFill } =
     useHandleUpload(files, downloadFiles, bufferSize);
 
-  const { startSocketUpload } = useHandleSocketUpload(files, downloadFiles);
+  const { startSocketUpload, resetUpload } = useHandleSocketUpload(
+    files,
+    downloadFiles,
+  );
+
+  const initNewUpload = () => {
+    setFiles([]);
+    resetUpload();
+  };
 
   const addFiles = (files) => {
     if (
@@ -48,12 +56,14 @@ const UploadView = ({ bufferSize }) => {
 
   return (
     <div className="upload-view">
-      {uploading ? (
+      {uploadStatus ? (
         <ProgressMonitor
+          uploadStatus={uploadStatus}
           bufferSize={bufferSize}
           readsTotal={readsTotal}
           readsProgressed={readsProgressed}
           bufferFill={bufferFill}
+          initNewUpload={initNewUpload}
         />
       ) : (
         <>

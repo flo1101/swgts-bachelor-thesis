@@ -220,8 +220,8 @@ const closeContext = async (contextId, setBufferFill, setReadsProgressed) => {
 
 export const useHandleUpload = (files, downloadFiles = false, bufferSize) => {
   const {
-    uploading,
-    setUploading,
+    uploadStatus,
+    setUploadStatus,
     readsTotal,
     setReadsTotal,
     readsProgressed,
@@ -230,8 +230,8 @@ export const useHandleUpload = (files, downloadFiles = false, bufferSize) => {
     setBufferFill,
   } = useStore(
     useShallow((state) => ({
-      uploading: state.uploading,
-      setUploading: state.setUploading,
+      uploadStatus: state.uploadStatus,
+      setUploadStatus: state.setUploadStatus,
       readsTotal: state.readsTotal,
       setReadsTotal: state.setReadsTotal,
       readsProgressed: state.readsProgressed,
@@ -245,7 +245,7 @@ export const useHandleUpload = (files, downloadFiles = false, bufferSize) => {
 
   const startUpload = async () => {
     try {
-      setUploading(true);
+      setUploadStatus("UPLOADING");
       setReadsProgressed(0);
       setBufferFill(0);
 
@@ -278,11 +278,12 @@ export const useHandleUpload = (files, downloadFiles = false, bufferSize) => {
       );
       setReadsProgressed(readCount);
       setBufferFill(0);
+      setUploadStatus("SUCCESS");
 
       // Download filtered files
       if (downloadFiles) startDownload(files, savedReads, fqsAsText);
     } catch (error) {
-      setUploading(false);
+      setUploadStatus("ERROR");
       console.error("Error during upload:", error);
       displayDialog(`Error during upload: ${error.message}`);
     }
@@ -290,9 +291,10 @@ export const useHandleUpload = (files, downloadFiles = false, bufferSize) => {
 
   return {
     startUpload,
-    uploading,
     readsTotal,
     readsProgressed,
     bufferFill,
+    uploadStatus,
+    setUploadStatus,
   };
 };

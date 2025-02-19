@@ -9,8 +9,8 @@ import { saveAs } from "file-saver";
 
 export const useHandleSocketUpload = (files, downloadFiles) => {
   const {
-    uploading,
-    setUploading,
+    uploadStatus,
+    setUploadStatus,
     readsTotal,
     setReadsTotal,
     readsProgressed,
@@ -25,8 +25,8 @@ export const useHandleSocketUpload = (files, downloadFiles) => {
     setReadSize,
   } = useStore(
     useShallow((state) => ({
-      uploading: state.uploading,
-      setUploading: state.setUploading,
+      uploadStatus: state.uploadStatus,
+      setUploadStatus: state.setUploadStatus,
       readsTotal: state.readsTotal,
       setReadsTotal: state.setReadsTotal,
       readsProgressed: state.readsProgressed,
@@ -126,10 +126,23 @@ export const useHandleSocketUpload = (files, downloadFiles) => {
     });
   };
 
+  const resetUpload = () => {
+    setUploadStatus(null);
+    setReadsTotal(0);
+    setReadsProgressed(0);
+    setBufferFill(0);
+    setLines(0);
+    setReadSize(0);
+    setLinesOffset(0);
+    linesRef.current = null;
+    readSizeRef.current = 0;
+    linesOffsetRef.current = 0;
+  };
+
   useEffect(() => {
     const onConnect = async () => {
       console.debug("Socket connection to server established.");
-      setUploading(true);
+      setUploadStatus("UPLOADING");
       setReadsProgressed(0);
       setBufferFill(0);
 
@@ -181,11 +194,12 @@ export const useHandleSocketUpload = (files, downloadFiles) => {
       if (downloadFiles) startDownload(files, savedReads, linesRef.current);
       setReadsProgressed(processedReads);
       socket.disconnect();
-      // setUploading(false);
+      setUploadStatus("SUCCESS");
     };
 
     const onConnectionError = (err) => {
       const { req, message, code, context } = err;
+      setUploadStatus("ERROR");
       console.error(`Failed to connect to server:`);
       console.error(`Code: ${code}`);
       console.error(`Request: ${req}`);
@@ -194,16 +208,19 @@ export const useHandleSocketUpload = (files, downloadFiles) => {
     };
 
     const onContextCreationError = (payload) => {
+      setUploadStatus("ERROR");
       const { message } = payload;
       console.error(`Failed to create context: ${message}`);
     };
 
     const onContextCloseError = (payload) => {
+      setUploadStatus("ERROR");
       const { message } = payload;
       console.error(`Failed to close context: ${message}`);
     };
 
     const onDataUploadError = (payload) => {
+      setUploadStatus("ERROR");
       const { message } = payload;
       console.error(`Failed to upload data: ${message}`);
     };
@@ -231,9 +248,11 @@ export const useHandleSocketUpload = (files, downloadFiles) => {
 
   return {
     startSocketUpload: startUpload,
-    uploading,
+    uploadStatus,
+    setUploadStatus,
     readsTotal,
     readsProgressed,
     bufferFill,
+    resetUpload,
   };
 };
