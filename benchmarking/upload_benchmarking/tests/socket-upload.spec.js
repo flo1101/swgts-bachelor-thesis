@@ -26,69 +26,57 @@ const FILES = [
   },
 ];
 
-// TESTS
-test("socket-upload performance test", async ({ page }) => {
-  // Remove default timeout for this test since upload times can vary substantially depending on file size
-  const testStartTime = new Date();
-  test.setTimeout(0);
+// Performs single upload test. Returns average measured runtime.
+async function uploadTest(
+  page,
+  file,
+  uploadButtonSelector,
+  repetitions = UPLOAD_REPETITIONS,
+) {
+  const uploadTimes = [];
 
-  const results = [];
+  for (let i = 0; i < repetitions; i++) {
+    console.debug(`Start upload test ${i + 1} for ${file.fileSizeMB} MB ...`);
 
-  for (const file of FILES) {
-    const uploadTimes = [];
-    console.debug(`Test socket upload for ${file.fileSizeMB} MB file.`);
+    await page.goto(URL);
 
-    // Execute upload multiple times for each file and take average of measured values
-    for (let i = 0; i < UPLOAD_REPETITIONS; i++) {
-      console.debug(`Starting upload ${i + 1}...`);
-      await page.goto(URL);
-
-      // Set input files
-      await page
-        .locator(".file-explorer-input")
-        .setInputFiles(
-          path.join(__dirname, "..", "data", "combined_samples", file.fileName),
-        );
-
-      // Start the upload and track time
-      const startTime = new Date();
-      await page.locator(".start-socket-upload-button").click();
-      const headline = page.locator(".progress-monitor h1");
-
-      try {
-        // Wait for element to be present
-        await headline.waitFor({ timeout: 60000 });
-        await expect(headline).toHaveText("Upload finished", { timeout: 0 });
-      } catch (error) {
-        console.error(`Socket upload run ${i + 1} failed:`, error);
-        return;
-      }
-
-      const endTime = new Date();
-      const duration = (endTime.getTime() - startTime.getTime()) / 1000;
-      uploadTimes.push(duration);
-
-      console.debug(
-        `Finished upload ${i + 1}. Upload took ${duration} seconds.`,
+    // Set input files
+    await page
+      .locator(".file-explorer-input")
+      .setInputFiles(
+        path.join(__dirname, "..", "data", "combined_samples", file.fileName),
       );
+
+    // Start the upload and track time
+    const startTime = new Date();
+    await page.locator(uploadButtonSelector).click();
+    const headline = page.locator(".progress-monitor h1");
+
+    try {
+      // Wait for upload completion
+      await headline.waitFor({ timeout: 60000 });
+      await expect(headline).toHaveText("Upload finished", { timeout: 0 });
+    } catch (error) {
+      console.error(`Upload test ${i + 1} failed:`, error);
+      return null;
     }
 
-    // Calculate and print the average upload time
-    const averageUploadTime = (
-      uploadTimes.reduce((sum, time) => sum + time, 0) / uploadTimes.length
-    ).toFixed(3);
+    const endTime = new Date();
+    const duration = (endTime.getTime() - startTime.getTime()) / 1000;
+    uploadTimes.push(duration);
 
     console.debug(
-      `Average socket-upload performance for ${file.fileSizeMB} MB file: ${averageUploadTime} seconds.`,
+      `Upload test ${i + 1} finished. Upload took ${duration} seconds.`,
     );
-
-    results.push({
-      ...file,
-      averageUploadTime,
-    });
   }
 
-  // Write results to CSV
+  // Return average upload time
+  return (
+    uploadTimes.reduce((sum, time) => sum + time, 0) / uploadTimes.length
+  ).toFixed(3);
+}
+
+function writeResultsToCSV(filename, results) {
   console.debug("Writing results to CSV...");
   const csvHeader =
     "File Name,File Size (MB),Reads Human,Reads Covid,Average Upload Time (s)\n"; // CSV header
@@ -99,25 +87,42 @@ test("socket-upload performance test", async ({ page }) => {
     )
     .join("\n");
 
-  const csvContent = csvHeader + csvData;
-
   try {
     fs.writeFileSync(
-      path.join(
-        __dirname,
-        "..",
-        "upload_results",
-        "http_upload_performance.csv",
-      ),
-      csvContent,
+      path.join(__dirname, "..", "upload_results", filename),
+      csvHeader + csvData,
     );
-    console.log(
-      "Upload performance data written to socket_upload_performance.csv",
-    );
+    console.log(`Upload performance data written to ${filename}`);
   } catch (err) {
     console.error("Error writing to CSV file:", err);
   }
+}
 
+test("socket-upload performance test", async ({ page }) => {
+  const testStartTime = new Date();
+  const results = [];
+  // Remove default timeout for this test since upload times can vary substantially depending on file size
+  test.setTimeout(0);
+
+  // Perform uploads and measure performance for each file
+  for (const file of FILES) {
+    console.debug(`Test socket-upload for ${file.fileSizeMB} MB file.`);
+    const averageUploadTime = await uploadTest(
+      page,
+      file,
+      ".start-socket-upload-button",
+    );
+    console.debug(
+      `Average socket-upload performance for ${file.fileSizeMB} MB file: ${averageUploadTime} seconds.`,
+    );
+    results.push({
+      ...file,
+      averageUploadTime,
+    });
+  }
+
+  // TODO writing to csv is disabled for testing
+  // writeResultsToCSV("socket_upload_performance_TEST.csv", results);
   const testEndTime = new Date();
   const testDuration = (testEndTime.getTime() - testStartTime.getTime()) / 1000;
   console.debug(
@@ -126,114 +131,32 @@ test("socket-upload performance test", async ({ page }) => {
 });
 
 test("http-upload performance test", async ({ page }) => {
-  // Remove default timeout for this test since upload times can vary substantially depending on file size
   const testStartTime = new Date();
-  test.setTimeout(0);
   const results = [];
+  // Remove default timeout for this test since upload times can vary substantially depending on file size
+  test.setTimeout(0);
 
-  // Warm up server upload, to give server values to make approximations for request time
-  console.debug("Performing warmup upload...");
-  await page.goto(URL);
-  await page
-    .locator(".file-explorer-input")
-    .setInputFiles(
-      path.join(__dirname, "..", "data", "combined_samples", FILES[0].fileName),
-    );
-  await page.locator(".start-http-upload-button").click();
-
-  const headline = page.locator(".progress-monitor h1");
-  try {
-    await headline.waitFor({ timeout: 60000 });
-    await expect(headline).toHaveText("Upload finished", { timeout: 0 });
-  } catch (error) {
-    console.error(`HTTP warmup upload failed:`, error);
-    return;
-  }
+  // Warm up upload, to give server values to make approximations for request time
+  await uploadTest(page, FILES[0], ".start-http-upload-button", 1);
 
   for (const file of FILES) {
-    const uploadTimes = [];
     console.debug(`Test http upload for ${file.fileSizeMB} MB file.`);
-
-    // Execute upload multiple times for each file and take average of measured values
-    for (let i = 0; i < UPLOAD_REPETITIONS; i++) {
-      console.debug(`Starting upload ${i + 1}...`);
-      await page.goto(URL);
-
-      // Set input files
-      await page
-        .locator(".file-explorer-input")
-        .setInputFiles(
-          path.join(__dirname, "..", "data", "combined_samples", file.fileName),
-        );
-
-      // Start the upload and track time
-      const startTime = new Date();
-      await page.locator(".start-http-upload-button").click();
-      const headline = page.locator(".progress-monitor h1");
-
-      try {
-        // Wait for element to be present
-        await headline.waitFor({ timeout: 60000 });
-        await expect(headline).toHaveText("Upload finished", { timeout: 0 });
-      } catch (error) {
-        console.error(`HTTP upload run ${i + 1} failed:`, error);
-        return;
-      }
-
-      const endTime = new Date();
-      const duration = (endTime.getTime() - startTime.getTime()) / 1000;
-      uploadTimes.push(duration);
-
-      console.debug(
-        `Finished upload ${i + 1}. Upload took ${duration} seconds.`,
-      );
-    }
-
     // Calculate and print the average upload time
-    const averageUploadTime = (
-      uploadTimes.reduce((sum, time) => sum + time, 0) / uploadTimes.length
-    ).toFixed(3);
-
+    const averageUploadTime = await uploadTest(
+      page,
+      file,
+      ".start-http-upload-button",
+    );
     console.debug(
       `Average http-upload performance for ${file.fileSizeMB} MB file: ${averageUploadTime} seconds.`,
     );
-
     results.push({
       ...file,
       averageUploadTime,
     });
   }
 
-  // Write results to CSV
-  console.debug("Writing results to CSV...");
-  const csvHeader =
-    "File Name,File Size (MB),Reads Human,Reads Covid,Average Upload Time (s)\n"; // CSV header
-  const csvData = results
-    .map(
-      (result) =>
-        `${result.fileName},${result.fileSizeMB},${result.readsHuman},${result.readsCovid},${result.averageUploadTime}`,
-    )
-    .join("\n");
-
-  const csvContent = csvHeader + csvData;
-
-  try {
-    fs.writeFileSync(
-      path.join(
-        __dirname,
-        "..",
-        "upload_results",
-        "http_upload_performance.csv",
-      ),
-      csvContent,
-    );
-    console.log(
-      "Upload performance data written to http_upload_performance.csv",
-    );
-  } catch (err) {
-    console.error("Error writing to CSV file:", err);
-  }
-
+  writeResultsToCSV("http_upload_performance.csv", results);
   const testEndTime = new Date();
   const testDuration = (testEndTime.getTime() - testStartTime.getTime()) / 1000;
   console.debug(
