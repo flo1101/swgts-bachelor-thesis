@@ -98,6 +98,7 @@ export async function fastqFileToLines(file) {
   });
 
   if (file.name.split(".").pop().toLowerCase() === "gz") {
+    // FIXME: for large fastq.gz files the decompressed data is too large to be stored in a single string and throws an error
     return ungzip(new Uint8Array(data), { to: "string" }).trim().split("\n");
   } else {
     return data.trim().split("\n");

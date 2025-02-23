@@ -1,0 +1,14 @@
+{
+  "name": "socket_http_benchmarking",
+  "version": "1.0.0",
+  "main": "socket_benchmarking.js",
+  "scripts": {},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "devDependencies": {
+    "@playwright/test": "^1.50.1",
+    "@types/node": "^22.13.4"
+  }
+}
