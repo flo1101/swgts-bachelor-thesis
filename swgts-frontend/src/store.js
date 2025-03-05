@@ -22,8 +22,6 @@ const useStore = create((set) => ({
   setLines: (lines) => set({ lines }),
   linesOffset: 0,
   setLinesOffset: (linesOffset) => set({ linesOffset }),
-  readSize: 0,
-  setReadSize: (readSize) => set({ readSize }),
 }));
 
 export default useStore;

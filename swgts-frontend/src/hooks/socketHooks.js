@@ -21,8 +21,6 @@ export const useHandleSocketUpload = (files, downloadFiles) => {
     setLines,
     linesOffset,
     setLinesOffset,
-    readSize,
-    setReadSize,
   } = useStore(
     useShallow((state) => ({
       uploadStatus: state.uploadStatus,
@@ -37,8 +35,6 @@ export const useHandleSocketUpload = (files, downloadFiles) => {
       setLines: state.setLines,
       linesOffset: state.linesOffset,
       setLinesOffset: state.setLinesOffset,
-      readSize: state.readSize,
-      setReadSize: state.setReadSize,
     })),
   );
 
@@ -53,7 +49,6 @@ export const useHandleSocketUpload = (files, downloadFiles) => {
   // State that need to be accessed in socket event handlers need to be accessed via refs.
   // Otherwise state updates won't show up
   const linesRef = useRef(lines);
-  const readSizeRef = useRef(readSize);
   const linesOffsetRef = useRef(linesOffset);
 
   const startUpload = () => {
@@ -80,14 +75,17 @@ export const useHandleSocketUpload = (files, downloadFiles) => {
     let i = linesOffsetRef.current;
     const linesTotal = linesRef.current[0].length;
 
-    // When all reads have been sent, return empty data to close context
+    // When all reads have been sent, return empty data to trigger context close
     if (i >= linesTotal) return { data, bytesSend: 0 };
 
     while (i < linesTotal) {
       const read = linesRef.current.map((fileLines) =>
         fileLines.slice(i, i + 4),
       );
-      const readSize = read[0][1].length;
+      const readSize = read
+        .map((readPart) => readPart[1].length)
+        .reduce((sum, num) => sum + num);
+
       if (bytesSend + readSize >= bytes) break;
       data.push(read);
       i += 4;
@@ -132,10 +130,8 @@ export const useHandleSocketUpload = (files, downloadFiles) => {
     setReadsProgressed(0);
     setBufferFill(0);
     setLines(0);
-    setReadSize(0);
     setLinesOffset(0);
     linesRef.current = null;
-    readSizeRef.current = 0;
     linesOffsetRef.current = 0;
   };
 
@@ -150,15 +146,10 @@ export const useHandleSocketUpload = (files, downloadFiles) => {
         files,
         displayDialog,
       );
-      const readSize = fqsAsText
-        .map((lines) => lines[1].length)
-        .reduce((sum, num) => sum + num);
 
       setReadsTotal(readCount);
       setLines(fqsAsText);
-      setReadSize(readSize);
       linesRef.current = fqsAsText;
-      readSizeRef.current = readSize;
       createContext(files);
     };
 
