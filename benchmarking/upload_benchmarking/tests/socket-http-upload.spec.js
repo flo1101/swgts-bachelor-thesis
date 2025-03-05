@@ -121,8 +121,7 @@ test("socket-upload performance test", async ({ page }) => {
     });
   }
 
-  // TODO writing to csv is disabled for testing
-  // writeResultsToCSV("socket_upload_performance_TEST.csv", results);
+  writeResultsToCSV("socket/socket_upload_performance.csv", results);
   const testEndTime = new Date();
   const testDuration = (testEndTime.getTime() - testStartTime.getTime()) / 1000;
   console.debug(
@@ -156,7 +155,7 @@ test("http-upload performance test", async ({ page }) => {
     });
   }
 
-  writeResultsToCSV("http_upload_performance.csv", results);
+  writeResultsToCSV("http/http_upload_performance.csv", results);
   const testEndTime = new Date();
   const testDuration = (testEndTime.getTime() - testStartTime.getTime()) / 1000;
   console.debug(

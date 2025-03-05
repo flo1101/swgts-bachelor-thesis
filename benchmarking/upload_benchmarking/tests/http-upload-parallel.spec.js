@@ -5,7 +5,7 @@ import fs from "fs";
 
 const URL = "https://swgts.albi.hhu.de/";
 const UPLOAD_REPETITIONS = 4;
-const CLIENT_COUNT = 8;
+const CLIENT_COUNT = parseInt(process.env.CLIENT_COUNT) || 2;
 const FILES = [
   {
     fileName: "corona_human_sample_1.fastq",
@@ -93,6 +93,7 @@ const RESULTS_CSV = path.join(
   __dirname,
   "..",
   "upload_results",
+  "http",
   `http_upload_performance_clients.csv`,
 );
 
@@ -115,24 +116,6 @@ const file = FILES[0];
 console.debug(
   `Testing HTTP upload with ${CLIENT_COUNT} clients for ${file.fileSizeMB} MB file.`,
 );
-
-// Warm up upload, to give server values to make approximations for request time
-// Has to be done using same amount of clients to get correct approximations.
-console.debug(`Doing warmup uploads...`);
-for (let clientId = 1; clientId <= CLIENT_COUNT; clientId++) {
-  test(`(Client ${clientId}): HTTP warmup upload`, async ({ page }) => {
-    // Remove default timeout for this test since upload times can vary substantially depending on file size
-    test.setTimeout(0);
-    await uploadTest(
-      page,
-      file,
-      ".start-http-upload-button",
-      clientId,
-      UPLOAD_REPETITIONS,
-    );
-  });
-}
-console.debug(`Warmup uplods finished.`);
 
 for (let clientId = 1; clientId <= CLIENT_COUNT; clientId++) {
   test(`(Client ${clientId}): HTTP upload test`, async ({ page }) => {

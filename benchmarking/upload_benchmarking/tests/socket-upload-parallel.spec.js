@@ -5,7 +5,7 @@ import fs from "fs";
 
 const URL = "https://swgts.albi.hhu.de/";
 const UPLOAD_REPETITIONS = 4;
-const CLIENT_COUNT = 2;
+const CLIENT_COUNT = parseInt(process.env.CLIENT_COUNT) || 2;
 const FILES = [
   {
     fileName: "corona_human_sample_1.fastq",
@@ -93,6 +93,7 @@ const RESULTS_CSV = path.join(
   __dirname,
   "..",
   "upload_results",
+  "socket",
   `socket_upload_performance_clients.csv`,
 );
 
