@@ -9,41 +9,20 @@ import psutil
 OUTPUT_FILE = "/monitoring/filter_cpu_usage.csv"
 
 
-def get_docker_container_pid():
+def get_container_cpu_usage(interval):
     try:
-        # Read the cgroup information to find the container PID
-        with open("/proc/1/cgroup", "r") as f:
-            for line in f:
-                if "docker" in line:
-                    # Extract the PID from the cgroup entry
-                    return int(line.split('/')[-1].strip())
-        print("No Docker PID found in cgroup")
-        return None
-    except Exception as e:
-        print(f"Error getting container PID: {e}")
-        return None
-
-
-def get_process_cpu_usage(pid, interval):
-    try:
-        process = psutil.Process(pid)
-        return process.cpu_percent(interval=interval)
-    except psutil.NoSuchProcess:
-        print(f"Process with PID {pid} not found.")
-        return None
+        # Get the CPU usage for the current container process
+        return psutil.cpu_percent(interval=interval)
     except Exception as e:
         print(f"Error getting CPU usage: {e}")
         return None
 
 
 def monitor_docker_cpu(interval=1.0, duration=7200):
-    pid = get_docker_container_pid()
-    if pid is None:
-        return
-
     start_time = time.time()
     monitoring_data = []
 
+    # Save monitored data on termination
     def handle_termination(sig, frame):
         print("Application terminated, saving monitoring data...")
         save_monitoring_data(monitoring_data)
@@ -53,7 +32,7 @@ def monitor_docker_cpu(interval=1.0, duration=7200):
 
     try:
         while time.time() < start_time + duration:
-            cpu_percent = get_process_cpu_usage(pid, interval)
+            cpu_percent = get_container_cpu_usage(interval)
             if cpu_percent is not None:
                 monitoring_data.append((time.time(), cpu_percent))
             time.sleep(interval)
