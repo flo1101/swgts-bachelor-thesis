@@ -19,6 +19,7 @@ def get_container_cpu_usage(interval):
 
 
 def monitor_docker_cpu(interval=1.0, duration=7200):
+    print("Start monitoring filters ...")
     start_time = time.time()
     monitoring_data = []
 
@@ -42,6 +43,7 @@ def monitor_docker_cpu(interval=1.0, duration=7200):
 
 
 def save_monitoring_data(data):
+    print("Saving filter monitoring data ...")
     directory = os.path.dirname(OUTPUT_FILE)
     if not os.path.exists(directory):
         os.makedirs(directory)
