@@ -84,7 +84,7 @@ services:
         target: /input
         read_only: true
       - type: bind
-        source: ./monitoring
+        source: ./swgts-backend/swgts_filter/monitoring
         target: /monitoring
     networks:
       - redis-filter
