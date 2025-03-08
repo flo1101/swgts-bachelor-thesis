@@ -60,5 +60,6 @@ def plot_data_sent_clients(client_counts, mode):
 for client_count in range(1, MAX_CLIENT_COUNT + 1):
     plot_data_sent_mode(client_count)
 
-client_counts = [2, 7]
-plot_data_sent_clients(client_counts, "socket")
+# Plot socket data for different clients
+# client_counts = [2, 7]
+# plot_data_sent_clients(client_counts, "socket")

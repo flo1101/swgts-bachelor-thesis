@@ -83,6 +83,9 @@ services:
         source: ./swgts-backend/input
         target: /input
         read_only: true
+      - type: bind
+        source: ./monitoring
+        target: /monitoring
     networks:
       - redis-filter
       - traefik-filter
