@@ -27,4 +27,6 @@ RUN pip install -r requirements.txt
 RUN pip install wheels/*.whl && \
     rm -rf wheels
 
-ENTRYPOINT ["python", "-m", "swgts_filter.server"]
+COPY monitoring/run_filter_monitoring.py .
+
+ENTRYPOINT ["bash", "-c", "python -m swgts_filter.server & python run_filter_monitoring.py"]
