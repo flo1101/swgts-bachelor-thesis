@@ -1,7 +1,5 @@
 import csv
 import os
-import signal
-import sys
 import time
 
 import psutil
@@ -11,7 +9,6 @@ OUTPUT_FILE = "/monitoring/filter_cpu_usage.csv"
 
 def get_container_cpu_usage(interval):
     try:
-        # Get the CPU usage for the current container process
         return psutil.cpu_percent(interval=interval)
     except Exception as e:
         print(f"Error getting CPU usage: {e}")
@@ -19,24 +16,15 @@ def get_container_cpu_usage(interval):
 
 
 def monitor_docker_cpu(interval=1.0, duration=7200):
-    print("Start monitoring filters ...")
+    print(f"Start monitoring CPU usage of filter-container. Interval = {interval}")
     start_time = time.time()
     monitoring_data = []
-
-    # Save monitored data on termination
-    def handle_termination(sig, frame):
-        print("Application terminated, saving monitoring data...")
-        save_monitoring_data(monitoring_data)
-        sys.exit(0)
-
-    signal.signal(signal.SIGTERM, handle_termination)
 
     try:
         while time.time() < start_time + duration:
             cpu_percent = get_container_cpu_usage(interval)
             if cpu_percent is not None:
                 monitoring_data.append((time.time(), cpu_percent))
-            time.sleep(interval)
         save_monitoring_data(monitoring_data)
     except KeyboardInterrupt:
         save_monitoring_data(monitoring_data)
