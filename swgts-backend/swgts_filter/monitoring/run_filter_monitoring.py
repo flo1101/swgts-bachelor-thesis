@@ -1,5 +1,7 @@
 import csv
 import os
+import signal
+import sys
 import time
 
 import psutil
@@ -19,6 +21,15 @@ def monitor_docker_cpu(interval=1.0, duration=7200):
     print(f"Start monitoring CPU usage of filter-container. Interval = {interval}")
     start_time = time.time()
     monitoring_data = []
+
+    # Save monitored data on termination
+    def handle_signal_interrupt(sig, frame):
+        print(f"Signal {sig}. Saving data to disk...")
+        save_monitoring_data(monitoring_data)
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, handle_signal_interrupt)
+    signal.signal(signal.SIGTERM, handle_signal_interrupt)
 
     try:
         while time.time() < start_time + duration:
