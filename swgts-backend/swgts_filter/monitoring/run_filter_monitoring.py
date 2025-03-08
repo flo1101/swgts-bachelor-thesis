@@ -12,9 +12,12 @@ OUTPUT_FILE = "/monitoring/filter_cpu_usage.csv"
 
 def get_docker_container_pid(container_name):
     try:
+        print(f"CONTAINER NAME: {container_name}")
         command = f"docker inspect --format '{{{{.State.Pid}}}}' {container_name}"
         process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = process.communicate()
+        print(f"STDOUT: {stdout.decode().strip()}")
+        print(f"STDERR: {stderr.decode().strip()}")
         pid = int(stdout.decode().strip())
         return pid
     except Exception as e:
