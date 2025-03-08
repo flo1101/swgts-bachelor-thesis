@@ -86,6 +86,7 @@ services:
       - type: bind
         source: ./monitoring
         target: /monitoring
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - redis-filter
       - traefik-filter
