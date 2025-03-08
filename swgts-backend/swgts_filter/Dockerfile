@@ -29,4 +29,4 @@ RUN pip install wheels/*.whl && \
 
 COPY swgts-backend/swgts_filter/monitoring/run_filter_monitoring.py .
 
-ENTRYPOINT ["bash", "-c", "python -m swgts_filter.server & python run_filter_monitoring.py"]
+ENTRYPOINT ["python", "-m", "swgts_filter.server"]
