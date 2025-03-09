@@ -61,7 +61,7 @@ def handle_create_context(payload):
     # To emit messages to a specific client/context, the context_id is used to create a client/context specific room
     join_room(str(context_id))
 
-    # Request data from client in multiple chunks, so we can multithread the filtering even for one client
+    # Request data from client in fractions of buffer size based on set request_size_factor
     request_size_factor, request_size = get_socket_request_info()
     for i in range(request_size_factor):
         request_data(request_size, context_id)
@@ -208,6 +208,7 @@ def server_status() -> dict[str, Union[str, float]]:
     answer: dict[str, Union[str, float]] = VERSION_INFORMATION.copy()
     answer['uptime'] = time() - SERVER_LAUNCH_TIME
     answer['bufferSize'] = app.config['MAXIMUM_PENDING_BYTES']
+    answer['requestSize'] = app.config['REQUEST_SIZE']
     return make_response(answer, 200)
 
 

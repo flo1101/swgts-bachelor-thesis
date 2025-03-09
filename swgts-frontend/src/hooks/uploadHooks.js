@@ -27,7 +27,7 @@ const workerThread = async (
   contextId,
   setReadsProgressed,
   setBufferFill,
-  bufferSize,
+  requestSize,
 ) => {
   let buffer = [];
   let currentSize = 0;
@@ -38,7 +38,7 @@ const workerThread = async (
       .reduce((sum, num) => sum + num);
 
     if (
-      (currentSize + readSize >= bufferSize || i === lines[0].length - 4) &&
+      (currentSize + readSize >= requestSize || i === lines[0].length - 4) &&
       currentSize !== 0
     ) {
       console.debug("Dispatching package of size ", currentSize);
@@ -112,7 +112,7 @@ const createAndHandleThreads = async (
   contextId,
   setReadsProgressed,
   setBufferFill,
-  bufferSize,
+  requestSize,
 ) => {
   const readCount = lineCount / 4;
   const workerCount = Math.min(WORKER_THREADS, readCount);
@@ -131,7 +131,7 @@ const createAndHandleThreads = async (
       contextId,
       setReadsProgressed,
       setBufferFill,
-      bufferSize,
+      requestSize,
     );
   });
 
@@ -219,7 +219,7 @@ const closeContext = async (contextId, setBufferFill, setReadsProgressed) => {
   }
 };
 
-export const useHandleUpload = (files, downloadFiles = false, bufferSize) => {
+export const useHandleUpload = (files, downloadFiles = false, requestSize) => {
   const {
     uploadStatus,
     setUploadStatus,
@@ -268,7 +268,7 @@ export const useHandleUpload = (files, downloadFiles = false, bufferSize) => {
         contextId,
         setReadsProgressed,
         setBufferFill,
-        bufferSize,
+        requestSize,
       );
 
       // Close context

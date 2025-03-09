@@ -11,13 +11,13 @@ import { useHandleSocketUpload } from "../../hooks/socketHooks";
 
 export const ALLOWED_EXTENSIONS = [".fastq.gz", ".fq.gz", ".fastq", ".fq"];
 
-const UploadView = ({ bufferSize }) => {
+const UploadView = ({ bufferSize, requestSize }) => {
   const [files, setFiles] = useState([]);
   const [downloadFiles, setDownloadFiles] = useState(false);
   const disableUpload = files.length <= 0;
 
   const { startUpload, uploadStatus, readsTotal, readsProgressed, bufferFill } =
-    useHandleUpload(files, downloadFiles, bufferSize);
+    useHandleUpload(files, downloadFiles, requestSize);
 
   const { startSocketUpload, resetUpload } = useHandleSocketUpload(
     files,
