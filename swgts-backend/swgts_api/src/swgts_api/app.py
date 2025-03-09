@@ -100,88 +100,81 @@ def handle_close_context(payload):
 @socketio.on("dataUpload")
 def handle_data_upload(payload):
     """Handle data uploaded from client"""
+    request_reception_time = time()
 
-    def process_data_upload():
-        request_reception_time = time()
+    chunk: list[list[list[str]]] = payload.get("data")
+    bytes: int = payload.get("bytes")
+    context_id: UUID = payload.get("contextId")
+    app.logger.info(f"({context_id}): Received {bytes} bytes from client.")
 
-        chunk: list[list[list[str]]] = payload.get("data")
-        bytes: int = payload.get("bytes")
-        context_id: UUID = payload.get("contextId")
-        app.logger.info(f"({context_id}): Received {bytes} bytes from client.")
+    if not context_exists(context_id):
+        socketio.emit("dataUploadError", {'message': f'No context with id {context_id} found.'}, to=str(context_id))
 
-        if not context_exists(context_id):
-            socketio.emit("dataUploadError", {'message': f'No context with id {context_id} found.'}, to=str(context_id))
+    if not isinstance(chunk, list):
+        socketio.emit("dataUploadError", {'message': 'Passed read chunks are not in list format.'}, to=str(context_id))
 
-        if not isinstance(chunk, list):
-            socketio.emit("dataUploadError", {'message': 'Passed read chunks are not in list format.'},
-                          to=str(context_id))
+    effective_cumulated_chunk_size: int = 0
+    pair_count: int = get_pair_count(
+        context_id)  # We expect as many reads to be paired as we have open file streams. (Support for strobe reads in theory)
 
-        effective_cumulated_chunk_size: int = 0
-        pair_count: int = get_pair_count(
-            context_id)  # We expect as many reads to be paired as we have open file streams. (Support for strobe reads in theory)
+    pairs_short_enough = []
+    for pair in chunk:
+        if not isinstance(pair, list):
+            socketio.emit("dataUploadError", {'message': 'There is a pair which is not a list.'}, to=str(context_id))
 
-        pairs_short_enough = []
-        for pair in chunk:
-            if not isinstance(pair, list):
-                socketio.emit("dataUploadError", {'message': 'There is a pair which is not a list.'},
-                              to=str(context_id))
-
-            if len(pair) != pair_count:
-                socketio.emit("dataUploadError",
-                              {'message': f'Expected {pair_count}-paired reads but found pair with {len(pair)} reads.'},
-                              to=str(context_id))
-
-            filtered_pair = []
-            for read in pair:
-                if not isinstance(read, list):
-                    socketio.emit("dataUploadError", {'message': 'There is a read which is not a list.'},
-                                  to=str(context_id))
-                if len(read) != 4:
-                    socketio.emit("dataUploadError", {'message': 'There is a read with a length != 4.'},
-                                  to=str(context_id))
-                # Here would be the place to perform additional sanity checks
-
-                # Check if the read length is within the allowed buffer size
-                if len(read[1]) <= app.config['MAXIMUM_PENDING_BYTES']:
-                    # Only count the length of the actual sequence
-                    effective_cumulated_chunk_size += len(read[1])
-                    filtered_pair.append(read)
-                else:
-                    increment_processed_bases(len(read[1]))
-                    # The read will be discarded anyway and doesn't matter for buffer calculation
-                    break
-            else:
-                # All reads fit the size and can be enqueued for filtering
-                pairs_short_enough.append(filtered_pair)
-
-        current_pending: int = get_pending_bytes_count(context_id)
-        request_size_factor, request_size = get_socket_request_info()
-        excess: int = current_pending + effective_cumulated_chunk_size - app.config['MAXIMUM_PENDING_BYTES']
-
-        if effective_cumulated_chunk_size > request_size:
-            app.logger.info(f"({context_id}): You sent more data than requested.")
-            app.logger.info(
-                f"Effective cumulated chunk size: {effective_cumulated_chunk_size}. Request size: {request_size}.")
-
+        if len(pair) != pair_count:
             socketio.emit("dataUploadError",
-                          {'message': 'You sent more bytes than requested. Sent data will be discarded.'},
+                          {'message': f'Expected {pair_count}-paired reads but found pair with {len(pair)} reads.'},
                           to=str(context_id))
-            return
 
-        elif excess > 0:
-            socketio.emit("dataUploadError", {'message': 'You sent too much data.'}, to=str(context_id))
-            return
+        filtered_pair = []
+        for read in pair:
+            if not isinstance(read, list):
+                socketio.emit("dataUploadError", {'message': 'There is a read which is not a list.'},
+                              to=str(context_id))
+            if len(read) != 4:
+                socketio.emit("dataUploadError", {'message': 'There is a read with a length != 4.'}, to=str(context_id))
+            # Here would be the place to perform additional sanity checks
 
-        # Execution from here on means accepting the chunk and processing the reads
-        # Adjust pending bytes stat in redis
-        change_pending_bytes_count(context_id, effective_cumulated_chunk_size)
-        increase_processed_read_count(context_id, len(chunk) - len(pairs_short_enough))
+            # Check if the read length is within the allowed buffer size
+            if len(read[1]) <= app.config['MAXIMUM_PENDING_BYTES']:
+                # Only count the length of the actual sequence
+                effective_cumulated_chunk_size += len(read[1])
+                filtered_pair.append(read)
+            else:
+                increment_processed_bases(len(read[1]))
+                # The read will be discarded anyway and doesn't matter for buffer calculation
+                break
+        else:
+            # All reads fit the size and can be enqueued for filtering
+            pairs_short_enough.append(filtered_pair)
 
-        # Enqueue valid read pairs for processing
-        if len(pairs_short_enough) > 0:
-            enqueue_chunks(pairs_short_enough, context_id, effective_cumulated_chunk_size, request_reception_time)
+    current_pending: int = get_pending_bytes_count(context_id)
+    request_size_factor, request_size = get_socket_request_info()
+    excess: int = current_pending + effective_cumulated_chunk_size - app.config['MAXIMUM_PENDING_BYTES']
 
-    socketio.start_background_task(process_data_upload)
+    if effective_cumulated_chunk_size > request_size:
+        app.logger.info(f"({context_id}): You sent more data than requested.")
+        app.logger.info(
+            f"Effective cumulated chunk size: {effective_cumulated_chunk_size}. Request size: {request_size}.")
+
+        socketio.emit("dataUploadError",
+                      {'message': 'You sent more bytes than requested. Sent data will be discarded.'},
+                      to=str(context_id))
+        return
+
+    elif excess > 0:
+        socketio.emit("dataUploadError", {'message': 'You sent too much data.'}, to=str(context_id))
+        return
+
+    # Execution from here on means accepting the chunk and processing the reads
+    # Adjust pending bytes stat in redis
+    change_pending_bytes_count(context_id, effective_cumulated_chunk_size)
+    increase_processed_read_count(context_id, len(chunk) - len(pairs_short_enough))
+
+    # Enqueue valid read pairs for processing
+    if len(pairs_short_enough) > 0:
+        enqueue_chunks(pairs_short_enough, context_id, effective_cumulated_chunk_size, request_reception_time)
 
 
 # Http routes
