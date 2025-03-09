@@ -21,7 +21,7 @@ MAXIMUM_PENDING_BYTES: int = 300000
 
 # The factor which is used to calculate the chunk size of each request done through the socket to the client.
 # request size = MAXIMUM_PENDING_BYTES / REQUEST_SIZE_FACTOR
-REQUEST_SIZE_FACTOR: int = 8
+REQUEST_SIZE_FACTOR: int = 4
 
 # How long after the last contact should a context be deleted?
 CONTEXT_TIMEOUT: int = 60
