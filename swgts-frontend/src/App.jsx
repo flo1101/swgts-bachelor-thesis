@@ -14,11 +14,11 @@ const App = () => {
     serverConfigError,
     fetchServerConfig,
   } = useGetServerConfig();
-  const { bufferSize } = serverConfig || {};
+  const { bufferSize, requestSize } = serverConfig || {};
 
   return (
     <div className="App">
-      <UploadView bufferSize={bufferSize} />
+      <UploadView bufferSize={bufferSize} requestSize={requestSize} />
       {showDialog && <InfoDialog text={dialogText} close={closeDialog} />}
     </div>
   );
