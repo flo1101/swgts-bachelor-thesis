@@ -26,8 +26,15 @@ const FILES = [
   //   readsCovid: 85000,
   // },
 ];
+const RESULTS_CSV = path.join(
+  __dirname,
+  "..",
+  "upload-test-results",
+  "http",
+  `http_upload_performance_parallel.csv`,
+);
 
-// Performs single upload test. Returns average measured runtime.
+// Performs single upload test. Returns measured upload times.
 async function uploadTest(
   page,
   file,
@@ -67,17 +74,13 @@ async function uploadTest(
 
     const endTime = new Date();
     const duration = (endTime.getTime() - startTime.getTime()) / 1000;
-    uploadTimes.push(duration);
+    uploadTimes.push(duration.toFixed(3));
 
     console.debug(
       `(Client ${clientId}): Upload test ${i + 1} finished. Upload took ${duration} seconds.`,
     );
   }
-
-  // Return average upload time
-  return (
-    uploadTimes.reduce((sum, time) => sum + time, 0) / uploadTimes.length
-  ).toFixed(3);
+  return uploadTimes;
 }
 
 function addToCSV(file, data) {
@@ -88,19 +91,10 @@ function addToCSV(file, data) {
   }
 }
 
-// Since state can't be shared between parallel running tests, each worker/test writes it's result in the file directly
-const RESULTS_CSV = path.join(
-  __dirname,
-  "..",
-  "upload_results",
-  "http",
-  `http_upload_performance_clients.csv`,
-);
-
 // Write header to CSV only if the file doesn't exist or is empty
 if (!fs.existsSync(RESULTS_CSV) || fs.statSync(RESULTS_CSV).size === 0) {
   const csvHeader =
-    "File Name,File Size (MB),Reads Human,Reads Covid,Average Upload Time (s),ClientID,Client Count,Repetitions\n";
+    "File Name,File Size (MB),Reads Human,Reads Covid,Upload Time (s),ClientID,Client Count,Repetition\n";
   try {
     console.debug("Writing CSV Header.");
     fs.writeFileSync(RESULTS_CSV, csvHeader);
@@ -120,11 +114,11 @@ console.debug(
 for (let clientId = 1; clientId <= CLIENT_COUNT; clientId++) {
   test(`(Client ${clientId}): HTTP upload test`, async ({ page }) => {
     console.debug(`(Client ${clientId}): Starting HTTP upload test.`);
-    // Remove default timeout for this test since upload times can vary substantially depending on file size
+    // Remove default timeout since upload times can vary substantially depending on file size
     test.setTimeout(0);
 
     // Perform uploads and measure performance for each file
-    const averageUploadTime = await uploadTest(
+    const measuredUploadTimes = await uploadTest(
       page,
       file,
       ".start-http-upload-button",
@@ -132,10 +126,14 @@ for (let clientId = 1; clientId <= CLIENT_COUNT; clientId++) {
       UPLOAD_REPETITIONS,
     );
     console.debug(
-      `(Client ${clientId}): Average HTTP-upload performance for ${file.fileSizeMB} MB file: ${averageUploadTime} seconds.`,
+      `(Client ${clientId}): HTTP-upload performance for ${file.fileSizeMB} MB file: ${measuredUploadTimes} seconds.`,
     );
+
+    // Since state can't be shared between parallel running tests, each client/test writes its result in the csv directly
     console.debug(`(Client ${clientId}): Writing result to CSV.`);
-    const resultString = `${file.fileName},${file.fileSizeMB},${file.readsHuman},${file.readsCovid},${averageUploadTime},${clientId},${CLIENT_COUNT},${UPLOAD_REPETITIONS}\n`;
-    addToCSV(RESULTS_CSV, resultString);
+    measuredUploadTimes.forEach((uploadTime, i) => {
+      const resultString = `${file.fileName},${file.fileSizeMB},${file.readsHuman},${file.readsCovid},${uploadTime},${clientId},${CLIENT_COUNT},${i + 1}\n`;
+      addToCSV(RESULTS_CSV, resultString);
+    });
   });
 }

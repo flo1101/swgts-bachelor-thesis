@@ -3,8 +3,8 @@ import numpy as np
 import pandas as pd
 
 # Load data from CSV files
-http_file_path = "http/http_upload_performance_clients.csv"
-socket_file_path = "socket/socket_upload_performance_clients.csv"
+http_file_path = "http/http_upload_performance_parallel.csv"
+socket_file_path = "socket/socket_upload_performance_parallel.csv"
 
 df_http = pd.read_csv(http_file_path, sep=",")
 df_socket = pd.read_csv(socket_file_path, sep=",")
@@ -13,8 +13,8 @@ df_socket = pd.read_csv(socket_file_path, sep=",")
 http_grouped_by_client_count = df_http.groupby("Client Count")
 socket_grouped_by_client_count = df_socket.groupby("Client Count")
 
-http_avg_group_upload_times = http_grouped_by_client_count["Average Upload Time (s)"].mean()
-socket_avg_group_upload_times = socket_grouped_by_client_count["Average Upload Time (s)"].mean()
+http_avg_group_upload_times = http_grouped_by_client_count["Upload Time (s)"].mean()
+socket_avg_group_upload_times = socket_grouped_by_client_count["Upload Time (s)"].mean()
 
 # Get client counts (groups)
 client_counts = http_avg_group_upload_times.index

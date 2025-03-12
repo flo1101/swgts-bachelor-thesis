@@ -89,7 +89,7 @@ function writeResultsToCSV(filename, results) {
 
   try {
     fs.writeFileSync(
-      path.join(__dirname, "..", "upload_results", filename),
+      path.join(__dirname, "..", "upload-test-results", filename),
       csvHeader + csvData,
     );
     console.log(`Upload performance data written to ${filename}`);
