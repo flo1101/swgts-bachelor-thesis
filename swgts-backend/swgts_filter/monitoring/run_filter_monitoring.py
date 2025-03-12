@@ -55,4 +55,4 @@ def save_monitoring_data(data):
 
 
 if __name__ == "__main__":
-    monitor_docker_cpu(1)
+    monitor_docker_cpu(interval=1.0)

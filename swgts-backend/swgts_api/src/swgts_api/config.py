@@ -27,5 +27,4 @@ REQUEST_SIZE_FACTOR: int = 8
 CONTEXT_TIMEOUT: int = 60
 
 # docker name or hostname of the redis service
-REDIS_SERVER: str = 'redis'  # production
-# REDIS_SERVER: str = 'localhost'  # development
+REDIS_SERVER: str = 'redis'
