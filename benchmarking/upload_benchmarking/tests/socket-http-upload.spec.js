@@ -4,7 +4,7 @@ import path from "path";
 import fs from "fs";
 
 const URL = "https://swgts.albi.hhu.de/";
-const UPLOAD_REPETITIONS = 5;
+const UPLOAD_REPETITIONS = 3;
 const FILES = [
   {
     fileName: "corona_human_sample_1.fastq",

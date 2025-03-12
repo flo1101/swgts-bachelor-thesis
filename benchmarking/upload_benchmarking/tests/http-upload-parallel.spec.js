@@ -4,14 +4,14 @@ import path from "path";
 import fs from "fs";
 
 const URL = "https://swgts.albi.hhu.de/";
-const UPLOAD_REPETITIONS = 4;
+const UPLOAD_REPETITIONS = 3;
 const CLIENT_COUNT = parseInt(process.env.CLIENT_COUNT) || 2;
 const FILES = [
   {
     fileName: "corona_human_sample_1.fastq",
-    fileSizeMB: 12.2,
-    readsHuman: 1000,
-    readsCovid: 8000,
+    fileSizeMB: 24.4,
+    readsHuman: 2000,
+    readsCovid: 16000,
   },
   // {
   //   fileName: "corona_human_sample_2.fastq",
