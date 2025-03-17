@@ -41,5 +41,7 @@ RUN chmod -R u+w /var/www/swgts /output
 #add entrypoint
 ADD swgts-backend/swgts_api/docker/entrypoint.sh /entrypoint.sh
 
+COPY swgts-backend/swgts_api/monitoring/run_api_monitoring.py .
+
 EXPOSE 80
 CMD ["/bin/sh","/entrypoint.sh"]
