@@ -11,7 +11,7 @@ OUTPUT_FILE = "/monitoring/filter_cpu_usage.csv"
 
 def get_container_cpu_usage(interval):
     try:
-        return psutil.cpu_percent(interval=interval)
+        return psutil.cpu_times_percent(interval=interval, percpu=False)
     except Exception as e:
         print(f"Error getting CPU usage: {e}")
         return None
