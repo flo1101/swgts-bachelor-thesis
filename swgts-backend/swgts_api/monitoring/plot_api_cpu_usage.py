@@ -3,9 +3,10 @@ import pandas as pd
 
 CLIENT_COUNTS = [1, 4, 8]
 CLIENT_MONITORING_DATA = "../../../benchmarking/upload_benchmarking/monitoring/"
+RUNS = 3
 
 
-def plot_http_socket_cpu_api_cpu_usage(client_count, run, rsf):
+def plot_api_cpu_usage(client_count, run, rsf):
     # Get start timestamps
     socket_df = pd.read_csv(
         f"{CLIENT_MONITORING_DATA}socket/test_run_{run}/rsf_{rsf}/upload_test_monitoring_socket_{client_count}.csv",
@@ -51,7 +52,7 @@ def plot_http_socket_cpu_api_cpu_usage(client_count, run, rsf):
 
 
 # Plot data for different test runs, client counts and rsf
-for run in range(1, 4):
+for run in range(1, RUNS + 1):
     for client_count in CLIENT_COUNTS:
-        plot_http_socket_cpu_api_cpu_usage(client_count, run, 1)
-        plot_http_socket_cpu_api_cpu_usage(client_count, run, 8)
+        plot_api_cpu_usage(client_count, run, 1)
+        plot_api_cpu_usage(client_count, run, 8)
