@@ -131,11 +131,15 @@ def close_context(context: UUID, hands_off: bool) -> Tuple[int, list[str]]:
         redis_server.delete(f'context:{context}:pair:{pair_index}:filename')
 
         if not hands_off:
-            with open(pathlib.Path(path.join(context_output_folder, output_filename)).name, 'wb') as handle:
-                lo.info(f"({context}): Trying to write reads to disk for pair index {pair_index}.")
+            filepath = pathlib.Path(path.join(context_output_folder, output_filename)).name
+            try:
                 lo.info(
-                    f"({context}): Reads to save: {redis_server.smembers(f'context:{context}:pair:{pair_index}:reads')}")
-                handle.write(b'\n'.join(redis_server.smembers(f'context:{context}:pair:{pair_index}:reads')))
+                    f"({context}): Try writing reads to disk for pair index {pair_index}. Writing to file: {filepath}")
+                with open(filepath, 'wb') as handle:
+                    handle.write(b'\n'.join(redis_server.smembers(f'context:{context}:pair:{pair_index}:reads')))
+                lo.info(f"({context}): Successfully wrote file: {filepath}")
+            except OSError as e:
+                lo.error(f"({context}): Error writing file {filepath}: {e}")
 
         redis_server.delete(f'context:{context}:pair:{pair_index}:reads')
 
