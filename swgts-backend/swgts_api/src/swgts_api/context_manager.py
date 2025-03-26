@@ -1,6 +1,5 @@
 import logging
 import os
-import pathlib
 import sys
 from os import path
 from time import time
@@ -131,10 +130,10 @@ def close_context(context: UUID, hands_off: bool) -> Tuple[int, list[str]]:
         redis_server.delete(f'context:{context}:pair:{pair_index}:filename')
 
         if not hands_off:
-            filepath = pathlib.Path(path.join(context_output_folder, output_filename)).name
+            filepath = path.join(context_output_folder, output_filename)
             try:
                 lo.info(
-                    f"({context}): Try writing reads to disk for pair index {pair_index}. Writing to file: {filepath}")
+                    f"({context}): Try writing reads to {filepath} for pair index {pair_index}")
                 with open(filepath, 'wb') as handle:
                     handle.write(b'\n'.join(redis_server.smembers(f'context:{context}:pair:{pair_index}:reads')))
                 lo.info(f"({context}): Successfully wrote file: {filepath}")
