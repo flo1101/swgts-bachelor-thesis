@@ -1,13 +1,14 @@
 import matplotlib.pyplot as plt
 import pandas as pd
 
-MAX_CLIENT_COUNT = 8
+CLIENT_COUNTS = [1, 4, 8]
+RUNS = 3
 
 
-def plot_data_sent_mode(client_count):
+def plot_data_sent_mode(client_count, run, rsf):
     # Load CSVs
-    socket_filename = f"socket/upload_test_monitoring_socket_{client_count}.csv"
-    http_filename = f"http/upload_test_monitoring_http_{client_count}.csv"
+    socket_filename = f"socket/test_run_{run}/rsf_{rsf}/upload_test_monitoring_socket_{client_count}.csv"
+    http_filename = f"http/test_run_{run}/rsf_{rsf}/upload_test_monitoring_http_{client_count}.csv"
     socket_df = pd.read_csv(socket_filename, skipfooter=1)
     http_df = pd.read_csv(http_filename, skipfooter=1)
 
@@ -30,12 +31,13 @@ def plot_data_sent_mode(client_count):
     # Add labels and legend
     plt.xlabel("Time (s)")
     plt.ylabel("Data sent (Mbps)")
-    plt.title(f"Client network output: HTTP vs Socket; Clients: {client_count}")
+    plt.title(f"Client network output: HTTP vs Socket; Run={run}; Clients={client_count}; RSF={rsf}")
     plt.legend()
     plt.grid(True)
 
     # Save and show plot
-    plt.savefig(f"client_network_upload_{client_count}.png")
+    plt.savefig(
+        f"plots/client_network_upload__run_{run}__clients_{client_count}__rsf_{rsf}.png")
     plt.show()
 
 
@@ -56,10 +58,8 @@ def plot_data_sent_clients(client_counts, mode):
     plt.show()
 
 
-# Plot http vs socket data for individual client counts
-for client_count in range(1, MAX_CLIENT_COUNT + 1):
-    plot_data_sent_mode(client_count)
-
-# Plot socket data for different clients
-# client_counts = [2, 7]
-# plot_data_sent_clients(client_counts, "socket")
+# Plot data for different test runs, client counts and rsf
+for run in range(1, 3 + 1):
+    for client_count in CLIENT_COUNTS:
+        plot_data_sent_mode(client_count, run, 1)
+        plot_data_sent_mode(client_count, run, 8)
