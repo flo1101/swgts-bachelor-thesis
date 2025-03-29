@@ -3,4 +3,3 @@ flask-cors==5.0.0
 flask-socketio==5.5.1
 eventlet==0.38.0
 redis==5.0.3
-psutil
