@@ -5,30 +5,49 @@ import sys
 import time
 
 OUTPUT_FILE = "/monitoring/filter_cpu_usage.csv"
-# cgroup files that track CPU usage
-CGROUP_CPU_USAGE = "/sys/fs/cgroup/cpu/cpuacct.usage"
-CGROUP_CPU_STAT = "/sys/fs/cgroup/cpu/cpu.stat"
+# cgroup file that tracks CPU usage
+CGROUP_CPU_STAT = "/sys/fs/cgroup/cpu.stat"
 
 
 def get_container_cpu_usage(interval):
     """Returns the CPU usage of the docker container in percent"""
     try:
         # Get time and CPU usage at interval start
-        with open(CGROUP_CPU_USAGE, "r") as f:
-            total_usage_start = int(f.read().strip())
+        with open(CGROUP_CPU_STAT, "r") as f:
+            stats_start = {line.split()[0]: int(line.split()[1]) for line in f.readlines()}
+
         system_time_start = time.time()
+        usage_start = stats_start.get("usage_usec", 0)
+        user_start = stats_start.get("user_usec", 0)
+        system_start = stats_start.get("system_usec", 0)
 
         time.sleep(interval)
 
         # Get time and CPU usage at interval end
-        with open(CGROUP_CPU_USAGE, "r") as f:
-            total_usage_end = int(f.read().strip())
-        system_time_end = time.time()
+        with open(CGROUP_CPU_STAT, "r") as f:
+            stats_end = {line.split()[0]: int(line.split()[1]) for line in f.readlines()}
 
-        # Compute CPU usage percentage
-        diff_usage = total_usage_end - total_usage_start
-        diff_time = (system_time_end - system_time_start) * 1e9  # Convert to nanoseconds
-        return (diff_usage / diff_time) * 100
+        system_time_end = time.time()
+        usage_end = stats_end.get("usage_usec", 0)
+        user_end = stats_end.get("user_usec", 0)
+        system_end = stats_end.get("system_usec", 0)
+
+        # Compute CPU usage during interval in percent
+        total_diff_usage = usage_end - usage_start
+        user_diff = user_end - user_start
+        system_diff = system_end - system_start
+        diff_time = (system_time_end - system_time_start) * 1e6  # Convert seconds to microseconds
+
+        cpu_percent = (total_diff_usage / diff_time) * 100
+        user_percent = (user_diff / diff_time) * 100
+        system_percent = (system_diff / diff_time) * 100
+
+        return {
+            'timestamp': system_time_end,
+            'total_usage': cpu_percent,
+            'user_usage': user_percent,
+            'system_usage': system_percent
+        }
     except Exception as e:
         print(f"Error getting containers CPU usage: {e}")
         return None
@@ -50,9 +69,10 @@ def monitor_docker_cpu(interval=1.0, duration=7200):
 
     try:
         while time.time() < start_time + duration:
-            cpu_percent = get_container_cpu_usage(interval)
-            if cpu_percent is not None:
-                monitoring_data.append([time.time(), cpu_percent])
+            cpu_data = get_container_cpu_usage(interval)
+            if cpu_data is not None:
+                monitoring_data.append(
+                    [cpu_data['timestamp'], cpu_data['total_usage'], cpu_data['user_usage'], cpu_data['system_usage']])
         save_monitoring_data(monitoring_data)
     except KeyboardInterrupt:
         save_monitoring_data(monitoring_data)
@@ -64,7 +84,7 @@ def save_monitoring_data(data):
     if not os.path.exists(directory):
         os.makedirs(directory)
 
-    fieldnames = ['Timestamp'] + ['CPU_Usage (%)']
+    fieldnames = ['Timestamp', 'Total_CPU_Usage (%)', 'User_CPU_Usage (%)', 'System_CPU_Usage (%)']
 
     with open(OUTPUT_FILE, 'w', newline='') as file:
         writer = csv.writer(file)
