@@ -27,6 +27,6 @@ RUN pip install -r requirements.txt
 RUN pip install wheels/*.whl && \
     rm -rf wheels
 
-COPY swgts-backend/swgts_filter/monitoring/run_filter_monitoring.py .
+COPY swgts-backend/swgts_filter/monitoring/run_server_monitoring.py .
 
 ENTRYPOINT ["python", "-m", "swgts_filter.server"]
