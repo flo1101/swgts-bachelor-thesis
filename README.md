@@ -1,263 +1,96 @@
-# SWGTS
-
-## Installation
-
-SWGTS comes packaged as an out-of-the box docker compose application.
-
-In order to start the software you need to:
-
-- Generate the folder structure ([see below](#folder-structure))
-- Provide a TLS certificate ([see below](#tls))
-- Configure/Provide a database ([see below](#example-reference-construction))
-
-### Folder Structure
-
-The software expects the following folders to exist:
-
-- input
-- output
-
-### TLS
-
-By design we also require encrypted communication via TLS, this means that you need to have a valid certificate. You can create a self-signed certificate (for testing purposes) using:
-
-```sh
-openssl req -new -newkey rsa:2048 -sha256 -days 365 -nodes -x509 -keyout server.pem -out server.crt
-```
-
-The paths to server.pem and server.crt can be adjusted in docker-compose.yml.
-
-### Example Reference Construction
-
-You can use the fetchExampleDatabase.sh script to generate a combined database of human (T2T) and hCoV-19. This requires minimap2 to be installed (also takes a significant amount of memory).
-
-## Basic Program Structure
-
-The software consists of the following containers:
-
-- Traefik, used as a reverse proxy to forward the incoming requests to the API/Frontend. Also serves as a load balancer
-- Redis is used as a fast and efficient key,value storage and maintains the currently pending reads that need to be filtered.
-- SWGTS-API handles the communication with clients
-- SWGTS-Filter performs the actual host depletion with mappy
-
-## CLI Client
-
-An example implementation of a CLI client is provided in the subfolder [swgts-submit](swgts-submit). To run it create a virtual environment for example using
-
-```sh
-mamba env create -f swgts-submit/requirements.txt -n swgts-submit
-```
-
-(Make sure that conda-forge is your default channel which should be the case in newer conda installations)
-
-Then execute using:
-
-```sh
-cd swgts-submit
-python -m swgts-submit --server https://example.com/swgts/api example_data/example_cov_ont_reads.fq
-```
-
-to send an example file to a swgts server running on the domain `www.example.com`. The chunk size, i.e., the amount of bases sent to the server at one time, can be adjusted with the `--count` argument.
-As a default setting this is a fraction of the server's buffer size to allow efficient parallelization.
-Note that if the chunk size exceeds the buffer size the server will reject the transmission.
-
-## Node.js Frontend
-
-A website frontend is also included in the docker application and can be found in the folder [swgts-frontend](swgts-frontend). Requests are forwarded to localhost by default (assuming the backend is located on the same machine), this can be adjusted in the `package.json` proxy directive.
-
-## Configuration Options
-
-Configuration of the software is done via two configuration files that are generated on first launch in the input folder: `config_api.py` and `config_filter.py`.
-In addition, you can edit the `docker-compose.yml` file to scale up individual components.
-Since the entire system is stateless it is for example possible to use multiple API containers or even distribute them to different machines. For the filter component it is recommended
-to utilize multiple threads (see below) instead of using multiple containers since this allows to take advantage of shared memory, drastically reducing the memory footprint in many scenarios.
-
-### config_api.py
-
-Configurable options are:
-
-#### HANDS_OFF
-
-If this is set to true the server will not save anything to disk. This can be useful if the server is just used to guarantee uniform host depletion quality or to take load off client machines. The clients are still able to reconstruct filtered read files based on the server responses.
-
-#### MAXIMUM_PENDING_BYTES
-
-This is the buffer size and limits how many bases can be held in RAM per context at any time. Decreasing this increases transmission times but reduces the risk of personal identification.
-
-#### CONTEXT_TIMEOUT
-
-If this timeout in seconds is exceeded a upload that was inactive will be removed.
-
-### config_filter.py
-
-Configurable options are:
-
-#### FILTER_MODE
-
-Can be set to POSITIVE (retention) or NEGATIVE (host subtraction).
-
-#### MINIMAP2_POSITIVE_CONTIG
-
-This is used for POSITIVE (retention) based modes and is used to identify the reference to which reads should align in order to be retained.
-
-#### MAPPING_PRESET
-
-Can be used to adjust for short reads (sr) or long reads (map-ont).
-
-#### MINIMAP2_QUALITY_THRESHOLD
-
-This is used for the NEGATIVE mode and requires an additional mapping quality to filter a read.
-
-#### WORKER_THREADS
-
-The amount of worker threads that are used in each filter container. The set of worker threads share the same database and thus require it to only be loaded into memory once.
-
-## Example Interaction
-
-Alice is a hosting provider and wants to collect reads of a target pathogen potentially contaminated with reads of human hosts.
-Two collaborating parties, Bob and Christine, want to send their reads to Alice.
-Since Alice wants to guarantee that the reads are depleted of host reads with sufficient quality, she hosts the SWGTS software under her domain
-`www.example.com`. Bob has no experience with CLI-based tools and just opens the website `www.example.com/swgts/frontend` in his browser.
-He drags the `.fastq` file containing the reads onto the screen and starts the upload process. Christine wants to upload data while it is being
-sequenced and uses the CLI client to initiate an upload. She has previously followed the installation instructions listed above and created a conda environment
-for the CLI client. Now, she invokes
-
-```sh
-python3 -m swgts-submit --server https://example.com/swgts/api christines_reads.fastq --outfolder local_out
-```
-
-while the file **christines_reads.fastq** is still being generated by her connected sequencing machine. Since she also wants to have a copy
-of the host-depleted reads, she provides the outfolder argument which results in the CLI client writing a depleted .fastq to the given folder.
-
-## REST API
-
-In the following section we document the REST API. This can be of relevance if you are interested in implementing your own client.
-
-### GET /api/server-status
-
-HTTP response code: 200 (OK)
-HTTP response body:
-
-```json
-{
-  "commit": "String",
-  "version": "String",
-  "date": "String",
-  "uptime": 23.14,
-  "maximum pending bytes": 100000
-}
-```
-
-### POST /api/context/create
-
-HTTP request body:
-List of all the files that are to be transmitted.
-
-```json
-{
-  "filenames": [
-    "pair1.fastq",
-    "pair2.fastq"
-  ]
-}
-```
-
-HTTP response code: 200 (OK)
-
-### POST /api/context/<uuid:context_id>/reads
-
-HTTP request body:
-
-```json
- # For each read index, for each file contains a list of the 4 lines making up one read
-[
-  [
-    [
-      "...",
-      "...",
-      "...",
-      "...."
-    ]
-  ]
-]
-```
-
-HTTP response code: 200 (OK)
-HTTP response body:
-
-```json
-{
-  "processed reads": 901000,
-  "pending bytes": 9000
-}
-```
-
-or
-
-HTTP response code: 400 (Bad Request)
-HTTP response body:
-
-```json
-{
-  "message": "Error message"
-}
-```
-
-or
-
-HTTP response code: 404 (Not Found)
-HTTP response body:
-
-```json
-{
-  "message": "Error message"
-}
-```
-
-or
-
-HTTP response code: 422 (Unprocessable Content)
-HTTP response header includes 'Retry-After'.
-HTTP response body:
-
-```json
-{
-  "message": "Error message",
-  "processed reads": 47119000,
-  "pending bytes": 18000
-}
-
-```
-
-### POST /api/context/<uuid:context_id>/close
-
-HTTP response code: 200 (OK)
-HTTP response body:
-
-```json
-{
-  "processed reads": 15000001,
-  "pending bytes": 234568
-}
-```
-
-or
-
-HTTP response code: 503 (Service Unavailable)
-HTTP response header includes 'Retry-After'.
-HTTP response body:
-
-```json
-{
-  "message": "Error message"
-}
-```
-
-## Benchmarking
-
-We provide a Jupyter Notebook with benchmarking scripts (designed for two machines) in the benchmarking folder.
-A conda environment definition file is included that contains the required python packages.
-
-## References
-
-SWGTS uses minimap2's (<https://doi.org/10.1093/bioinformatics/bty191>) in-memory version mappy as the default mapping tool.
+# SWGTS - Application extension and performance optimization
+
+This repository provides an extension of SWGTS (<https://doi.org/10.1093/bioinformatics/btae332>) by implementing the
+upload process through WebSockets.
+End-2-end testing is used to evaluate the performance of the new upload approach for different numbers of concurrent
+clients,
+In addition, Python scripts are provided to monitor network usage and CPU utilization during uploads.
+
+## Application extension
+
+The WebSocket upload implements the same approach of using a serverside buffer to limit the amount of unfiltered
+data held on the server.
+The difference lies in the way data during uploads is exchanged between clients and server. This happens over a
+persistent WebSocket connection that is established on upload start instead of independent HTTP connections.
+While during an HTTP upload data is constantly emitted by clients and eventually rejected by the server, WebSocket
+clients only send data on request by the server preventing data rejection.
+
+### API
+
+Since the API needs to provide WebSocket support on top of HTTP, the previous Flask backend has exchanged by a <b>
+Flask-Socket.IO</b> backend.
+This keeps the existing logic and HTTP endpoints and adds support for WebSocket listeners, through which the new upload
+has been implemented. The server-side implementation of these listeners alongside the HTTP endpoints can be found
+in [app.py](swgts-backend/swgts_api/src/swgts_api/app.py).
+The previous Apache server that provided the backend has been exchanged for an <b>Eventlet</b> based server, because
+Apache does not support WebSockets by default.
+
+### Frontend
+
+The frontend has been extended to support the client-side logic for WebSocket uploads through the use of the <b>
+Socket.IO
+Client API</b>.
+Similar to the API, the WebSocket upload is handled through registration of listeners to handle upload-events.
+The client-side implementation of these listeners can be found
+in [socketHooks.js](swgts-frontend/src/hooks/socketHooks.js).
+The user interface of the frontend has been visually slightly adjusted but provide the same functionalities as prior.
+
+### Traefik
+
+Traefik as the applications reverse proxy acts as the applications interface for client interaction.
+Therefore, the underlying configuration was modified to allow for the forwarding of WebSocket requests in addition to
+HTTP.
+
+### Filter
+
+Host depletion is generally handled in the same way as for HTTP through multiple parallel workers.
+However, for WebSocket uploads each worker sends and HTTP request to the API after processing of a job is finished.
+This triggers the request of new data from the client by the API, as after processing buffer space is available again.
+
+## Performance evaluation
+
+### Playwright tests
+
+The time required for HTTP and WebSocket uploads can be measured through end-2-end <b>Playwright</b> tests.
+Each test measures the upload performance by simulating a browser instance and utilizing the provided user interface to
+trigger an upload.
+The time elapsed between initiation and completion is tracked and written to a CSV file.
+This is also possible for multiple simultaneously uploading clients, as Playwright tests can be executed in
+parallel. The files for WebSocket and HTTP upload tests can be found in
+the [tests](benchmarking/upload_benchmarking/tests) subdirectory and the resulting CSV files in
+the [upload-test-results](benchmarking/upload_benchmarking/upload-test-results) subdirectory.
+
+### Client monitoring
+
+During upload test the clients network output and CPU usage can be monitored through
+the [plot_client_monitoring_data.py](benchmarking/upload_benchmarking/monitoring/plot_client_monitoring_data.py) script.
+It utilizes <b>Psutil</b> to retrieve the relevant system data in one-second intervals and saves the results with
+corresponding timestamps in the [monitoring](benchmarking/upload_benchmarking/monitoring) subdirectory.
+
+For executing the Playwright test alongside client monitoring
+the [run_upload_tests.py](benchmarking/upload_benchmarking/run_upload_tests.py) script is provided.
+It should be called with the `--mode` and `--workers` paramters where `--mode` defines the upload implementation that
+should be tested (either `http` for HTTP or `socket` for WebSocket) and `--workers` defines the number of concurrent
+uploading clients. The test will be performed consecutively for all numers of parallel clients up to the amount defined
+through `--workers`.
+
+### Server monitoring
+
+In a similar way Psutil is used to monitor the server's CPU usage during uploads as implemented
+in [run_server_monitoring.py](swgts-backend/swgts_filter/monitoring/run_server_monitoring.py).
+The same is possible for individual system components by monitoring the CPU usage of individual docker containers
+through Linux control groups.
+This is currently only implemented for the API container
+in [run_api_monitoring.py](swgts-backend/swgts_api/monitoring/run_api_monitoring.py) but is applicable for other
+containers in the same way.
+The mentioned scripts are copied into the corresponding containers on server start but not run by default. This needs to
+be done manually if server monitoring is required.
+Results are written to CSV as done for the client monitoring.
+
+### Visualizing results
+
+Scripts for plotting the measured upload times as well as client and server monitoring data are provided
+through [plot_upload_performances.py](benchmarking/upload_benchmarking/upload-test-results/plot_upload_performances.py), [plot_client_monitoring_data.py](benchmarking/upload_benchmarking/monitoring/plot_client_monitoring_data.py), [plot_server_cpu_usage.py](swgts-backend/swgts_filter/monitoring/plot_server_cpu_usage.py)
+and [plot_api_cpu_usage.py](swgts-backend/swgts_api/monitoring/plot_api_cpu_usage.py).
+These currently assume test results are provided for multiple test runs as this is how testing was previously executed.
+If plotting is required to be done for single tests, the files need to be adjusted accordingly.
