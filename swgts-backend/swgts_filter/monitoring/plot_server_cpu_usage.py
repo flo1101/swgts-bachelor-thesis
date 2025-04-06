@@ -1,13 +1,16 @@
+import os
+
 import matplotlib.pyplot as plt
 import pandas as pd
 
 CLIENT_COUNTS = [1, 4, 8]
+RUNS = [1, 2, 3]
 CLIENT_MONITORING_DATA = "../../../benchmarking/upload_benchmarking/monitoring/"
-RUNS = 3
+OUTPUT = "plots/"
 
 
-def plot_filter_cpu_usage(client_count, run, rsf):
-    # Get start timestamps
+def plot_server_cpu_usage(client_count, run, rsf):
+    # Get start and end timestamps of upload tests from client monitoring data
     socket_df = pd.read_csv(
         f"{CLIENT_MONITORING_DATA}socket/test_run_{run}/rsf_{rsf}/upload_test_monitoring_socket_{client_count}.csv",
         skipfooter=1, engine="python")
@@ -19,8 +22,8 @@ def plot_filter_cpu_usage(client_count, run, rsf):
     http_start_time = http_df["Timestamp"].iloc[0]
     http_end_time = http_df["Timestamp"].iloc[-1]
 
-    # Get cpu usage of filter container
-    cpu_usage_df = pd.read_csv(f"./test_run_{run}/rsf_{rsf}/filter_cpu_usage.csv")
+    # Get cpu usage of server
+    cpu_usage_df = pd.read_csv(f"./test_run_{run}/rsf_{rsf}/server_cpu_usage.csv")
 
     # Get measurements taken between start and end time
     socket_cpu_usage_df = cpu_usage_df[
@@ -36,23 +39,27 @@ def plot_filter_cpu_usage(client_count, run, rsf):
 
     # Plot data
     plt.figure(figsize=(20, 5))
-    plt.plot(socket_time_diffs, socket_cpu_usage_df["user"], label="Socket", linestyle="-")
-    plt.plot(http_time_diffs, http_cpu_usage_df["user"], label="HTTP", linestyle="-")
+    plt.xticks(fontsize=18)
+    plt.yticks(fontsize=18)
+    plt.plot(socket_time_diffs, socket_cpu_usage_df["CPU_Percentage"], label="Socket", linestyle="-", linewidth=3)
+    plt.plot(http_time_diffs, http_cpu_usage_df["CPU_Percentage"], label="HTTP", linestyle="-", linewidth=3)
 
     # Add labels and legend
-    plt.xlabel("Time (s)")
-    plt.ylabel("CPU usage (%)")
-    plt.title(f"Filter CPU usage during upload; Run={run}; Clients={client_count}; RSF={rsf}")
-    plt.legend()
+    plt.xlabel("Time (s)", fontsize=18)
+    plt.ylabel("CPU usage (%)", fontsize=18)
+    plt.title(f"Run={run}; Clients={client_count}; RSF={rsf}", fontsize=18)
+    plt.legend(fontsize=18)
     plt.grid(True)
+    plt.tight_layout()
+    plt.savefig(f"{OUTPUT}server_cpu_usage__run_{run}__clients_{client_count}__rsf_{rsf}.png")
+    # plt.show()
 
-    # Save and show plot
-    plt.savefig(f"plots/filter_cpu_usage__run_{run}__clients_{client_count}__rsf_{rsf}.png")
-    plt.show()
 
+# Create output directory
+os.makedirs(OUTPUT, exist_ok=True)
 
-# Plot data for different test runs, client counts and rsf
-for run in range(1, RUNS + 1):
+# Plot server's CPU usage for multiple test runs, client counts and RSFs
+for run in RUNS:
     for client_count in CLIENT_COUNTS:
-        plot_filter_cpu_usage(client_count, run, 1)
-        plot_filter_cpu_usage(client_count, run, 8)
+        plot_server_cpu_usage(client_count, run, 1)
+        plot_server_cpu_usage(client_count, run, 8)

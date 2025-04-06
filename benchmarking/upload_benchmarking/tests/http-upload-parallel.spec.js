@@ -103,9 +103,9 @@ if (!fs.existsSync(RESULTS_CSV) || fs.statSync(RESULTS_CSV).size === 0) {
   }
 }
 
-// Simulate multiple clients by creating tests dynamically and running them in parallel
+// Simulate concurrent uploading clients by creating tests dynamically and running them in parallel
 test.describe.configure({ mode: "parallel" });
-const file = FILES[0];
+const file = FILES[0]; // If required executed tests for multiple files here
 
 console.debug(
   `Testing HTTP upload with ${CLIENT_COUNT} clients for ${file.fileSizeMB} MB file.`,

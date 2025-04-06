@@ -1,8 +1,11 @@
+import os
+
 import matplotlib.pyplot as plt
 import pandas as pd
 
 CLIENT_COUNTS = [1, 4, 8]
-RUNS = 3
+RUNS = [1, 2, 3]
+OUTPUT = "plots/"
 
 
 def plot_data_sent_mode(client_count, run, rsf):
@@ -30,36 +33,20 @@ def plot_data_sent_mode(client_count, run, rsf):
 
     # Add labels and legend
     plt.xlabel("Time (s)")
-    plt.ylabel("Data sent (Mbps)")
-    plt.title(f"Client network output: HTTP vs Socket; Run={run}; Clients={client_count}; RSF={rsf}")
+    plt.ylabel("Network output (Mbps)")
+    plt.title(f"Run={run}; Clients={client_count}; RSF={rsf}")
     plt.legend()
     plt.grid(True)
-
-    # Save and show plot
     plt.savefig(
-        f"plots/client_network_upload__run_{run}__clients_{client_count}__rsf_{rsf}.png")
-    plt.show()
+        f"{OUTPUT}client_network_upload__run_{run}__clients_{client_count}__rsf_{rsf}.png")
+    # plt.show()
 
 
-def plot_data_sent_clients(client_counts, mode):
-    plt.figure(figsize=(40, 5))
+# Create output directory
+os.makedirs(OUTPUT, exist_ok=True)
 
-    for client_count in client_counts:
-        df = pd.read_csv(f"{mode}/upload_test_monitoring_{mode}_{client_count}.csv", skipfooter=1)
-        data_sent = df["Bytes_Sent"] / 125000
-        timestamps = df["Timestamp"] - df["Timestamp"].iloc[0]
-        plt.plot(timestamps, data_sent, label=f"Client count = {client_count}", linestyle="-")
-
-    plt.xlabel("Time (s)")
-    plt.ylabel("Data sent (Mbps)")
-    plt.title(f"Client network output {mode}")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-
-# Plot data for different test runs, client counts and rsf
-for run in range(1, 3 + 1):
+# Plot network output for multiple test runs, client counts and RSFs
+for run in RUNS:
     for client_count in CLIENT_COUNTS:
         plot_data_sent_mode(client_count, run, 1)
         plot_data_sent_mode(client_count, run, 8)

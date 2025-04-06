@@ -9,7 +9,7 @@ import psutil
 
 
 def monitor_resources(process, cpu_percentages, network_stats, timestamps):
-    """Monitors CPU and network usage"""
+    """Monitors client CPU usage and network output"""
     try:
         while process.poll() is None:
             # Measure system-wide cpu usage in percent. Returned value is snapshot of current usage.
@@ -99,7 +99,11 @@ def run_playwright_test(workers, mode):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run Playwright tests for multiple client counts.")
+    """
+    Runs upload tests using the upload mode passed through --mode. 
+    Tests are executed for all client counts up to the number passed through --workers.
+    """
+    parser = argparse.ArgumentParser(description="Run Playwright tests for multiple client and specified upload mode.")
     parser.add_argument("--workers", type=int, default=1, required=False, help="Number of workers to use.")
     parser.add_argument("--mode", type=str, default="socket", required=False,
                         help="Upload implementation to test performance of.")
